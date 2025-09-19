@@ -1,7 +1,17 @@
 # Flag_Reaction_Test
 
-main = stable demo-ready code  
-dev = active development branch  
+Ensure Git is installed on your laptop. If not installed go to https://git-scm.com/downloads and download and run installer based on your OS  
+After accepting collaborator invite  
+1. Open VS Code (or your terminal)  
+2. Navigate to the folder where you want the repo to live  
+3. Run:  
+git clone https://github.com/your-github-username/Flag_Reaction_Test.git  
+cd Flag_Reaction_Test  
+
+Your local repository will now be setup and you will be defaulted to the main branch  
+
+main branch = stable demo-ready code  
+dev branch = active development branch  
 
 Make sure to always pull from dev before starting to work:  
 git checkout dev  
