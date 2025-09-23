@@ -5,7 +5,7 @@ After accepting collaborator invite
 1. Open VS Code (or your terminal)  
 2. Navigate to the folder where you want the repo to live  
 3. Run:  
-git clone https://github.com/your-github-username/Flag_Reaction_Test.git  
+git clone https://github.com/ryancarnaxide/Flag_Reaction_Test.git  
 cd Flag_Reaction_Test  
 
 Your local repository will now be setup and you will be defaulted to the main branch  
