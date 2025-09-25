@@ -87,6 +87,10 @@ class FlagApp(QWidget):
         btn_create.clicked.connect(self.create_account)
         vbox.addWidget(btn_create)
 
+        btn_select = QPushButton("Remove Account")
+        btn_select.clicked.connect(self.delete_player_from_list)
+        vbox.addWidget(btn_select)
+
         btn_export = QPushButton("Export CSV")
         btn_export.clicked.connect(self.export_csv)
         vbox.addWidget(btn_export)
@@ -254,6 +258,24 @@ class FlagApp(QWidget):
             self.table.setItem(row_num, 0, QTableWidgetItem(name))
             self.table.setItem(row_num, 1, QTableWidgetItem(diff))
             self.table.setItem(row_num, 2, QTableWidgetItem(str(catches)))
+    def delete_player_from_list(self):
+        # get currently selected player then call delete_player(player_id) to remove their information from database, and reload list
+        item = self.player_list.currentItem()
+        if not item:
+            return
+        pid = item.data(Qt.ItemDataRole.UserRole)
+        player = db.get_player_by_id(pid)
+        if player:
+            result = QMessageBox.question(
+                self,
+                "Confirm Deletion",
+                f"Are you sure you want to delete player '{player['name']}'?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if result == QMessageBox.StandardButton.Yes:
+                db.delete_player(pid)
+                self.load_players()
+        self.switch_to(self.start_screen)
 
     def play_again(self):
         global selected_difficulty
