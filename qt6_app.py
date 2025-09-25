@@ -23,13 +23,29 @@ selected_difficulty = None
 # Dark Mode Stylesheet
 # ==============================
 dark_style = """
-QWidget { background-color: #1e1e2f; color: #ffffff; font-family: Arial; font-size: 14px; }
-QPushButton { background-color: #3b3b5c; border-radius: 12px; padding: 12px 20px; font-size: 16px; }
-QPushButton:hover { background-color: #565680; }
+QWidget { background-color: #1e1e2f; color: #ffffff; font-family: Arial; font-size: 18px; }
+QPushButton { background-color: #1e407c; color: #ffffff; border-radius: 12px; padding: 12px 20px; font-size: 18px; }
+QPushButton:hover { background-color: #96BEE6; color: #001E44 }
 QPushButton:pressed { background-color: #2a2a44; }
 QTableWidget { background-color: #2b2b3d; gridline-color: #444466; }
 QHeaderView::section { background-color: #3b3b5c; padding: 4px; font-weight: bold; }
-QListWidget { background-color: #2b2b3d; border-radius: 12px; padding: 6px; }
+QListWidget { background-color: #001E44; border-radius: 12px; padding: 6px; font-size: 16px;}
+/* Larger Scrollbar */
+QScrollBar:vertical {
+    background: #2b2b3d;
+    width: 12px;
+    margin: 20px 0 20px 0;
+    border-radius: 6px;
+}
+QScrollBar::handle:vertical {
+    background: #565680;
+    min-height: 20px;
+    border-radius: 6px;
+}
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+}
 """
 
 # ==============================
@@ -40,6 +56,7 @@ class FlagApp(QWidget):
         super().__init__()
         self.setWindowTitle("Flag Reaction Test (Dark Mode)")
         self.setGeometry(150, 150, 700, 550)
+        self.setObjectName("MainAppWindow")
         self.setStyleSheet(dark_style)
 
         self.stack = QStackedWidget()
