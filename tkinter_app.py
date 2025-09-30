@@ -141,6 +141,19 @@ def export_csv():
     filename = db.export_to_csv()
     messagebox.showinfo("CSV Exported", f"CSV data properly exported as {filename}.\nInsert USB to download latest CSV.")
 
+def import_csv_ui():
+    from tkinter import filedialog
+    filepath = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
+    if filepath:
+        try:
+            db.import_from_csv(filepath)
+            load_players()
+            update_leaderboard()
+            messagebox.showinfo("CSV Imported", f"Successfully imported data from {filepath}.")
+        except Exception as e:
+            messagebox.showerror("Import Failed", f"Error importing CSV:\n{e}")
+
+
 # ==============================
 # UI Setup
 # ==============================
@@ -197,6 +210,9 @@ ttk.Button(start_frame, text="Create New Account", style="Flat.TButton",
            takefocus=False, command=create_account).pack(pady=5)
 ttk.Button(start_frame, text="CSV Export", style="Flat.TButton",
            takefocus=False, command=export_csv).pack(pady=10)
+ttk.Button(start_frame, text="CSV Import", style="Flat.TButton",
+           takefocus=False, command=lambda: import_csv_ui()).pack(pady=10)
+
 
 # ----- Player Screen -----
 player_frame = tk.Frame(root, bg="white")

@@ -13,7 +13,7 @@ def get_connection():
     return sqlite3.connect(DB_FILE)
 
 def setup_database():
-    """Create tables if they don't exist."""
+    """Create tables if they don't exist (with Position and Side)."""
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -21,6 +21,8 @@ def setup_database():
     CREATE TABLE IF NOT EXISTS players (
         player_id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
+        position TEXT,
+        side TEXT CHECK(side IN ('Offense','Defense','Special Teams')),
         date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     """)
@@ -40,14 +42,14 @@ def setup_database():
     conn.close()
 
 # ---------------------------
-# Player Functions
+# Player Functions (no changes, but players now have position + side fields)
 # ---------------------------
-def create_player(name):
+def create_player(name, position=None, side=None):
     """Add a new player. Returns player_id or None if name exists."""
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO players (name) VALUES (?)", (name,))
+        cursor.execute("INSERT INTO players (name, position, side) VALUES (?,?,?)", (name, position, side))
         conn.commit()
     except sqlite3.IntegrityError:
         conn.close()
@@ -58,10 +60,10 @@ def create_player(name):
     return pid
 
 def get_all_players():
-    """Return a list of tuples (player_id, name)."""
+    """Return a list of tuples (player_id, name, position, side)."""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT player_id, name FROM players ORDER BY name")
+    cursor.execute("SELECT player_id, name, position, side FROM players ORDER BY name")
     rows = cursor.fetchall()
     conn.close()
     return rows
@@ -70,11 +72,11 @@ def get_player_by_id(player_id):
     """Return a dict with player info, or None."""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT player_id, name FROM players WHERE player_id=?", (player_id,))
+    cursor.execute("SELECT player_id, name, position, side FROM players WHERE player_id=?", (player_id,))
     row = cursor.fetchone()
     conn.close()
     if row:
-        return {"id": row[0], "name": row[1]}
+        return {"id": row[0], "name": row[1], "position": row[2], "side": row[3]}
     return None
 
 def delete_player(player_id):
@@ -87,8 +89,9 @@ def delete_player(player_id):
     conn.close()
 
 # ---------------------------
-# Session Functions
+# Session Functions (no change)
 # ---------------------------
+
 def record_session(player_id, difficulty, catches):
     """Insert a new session for a player."""
     multiplier = {"Easy":1, "Medium":2, "Hard":3, "Very Hard":5}[difficulty]
@@ -155,7 +158,7 @@ def export_to_csv(folder=None):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT p.name, s.difficulty, s.catches, s.score, s.played_at
+        SELECT p.name, p.position, p.side, s.difficulty, s.catches, s.score, s.played_at
         FROM sessions s
         JOIN players p ON p.player_id = s.player_id
         ORDER BY s.played_at ASC
@@ -165,7 +168,55 @@ def export_to_csv(folder=None):
 
     with open(filename, mode='w', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(["Player", "Difficulty", "Flags", "Score", "Date"])
+        writer.writerow(["Player", "Position", "Side", "Difficulty", "Flags", "Score", "Date"])
         writer.writerows(rows)
 
     return filename
+
+# ---------------------------
+# CSV Import
+# ---------------------------
+def import_from_csv(filepath):
+    """Import sessions from a CSV file into the database.
+       Expected columns: Player, Position, Side, Difficulty, Flags, Score, Date
+       Backward compatible with old CSVs without Position/Side.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    with open(filepath, newline='') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            player_name = row.get("Player")
+            position = row.get("Position") if "Position" in row else None
+            side = row.get("Side") if "Side" in row else None
+
+            # Ensure player exists or create them (with position/side if available)
+            cursor.execute("SELECT player_id FROM players WHERE name=?", (player_name,))
+            player = cursor.fetchone()
+            if player:
+                player_id = player[0]
+            else:
+                cursor.execute(
+                    "INSERT INTO players (name, position, side) VALUES (?,?,?)",
+                    (player_name, position, side)
+                )
+                conn.commit()
+                cursor.execute("SELECT player_id FROM players WHERE name=?", (player_name,))
+                player_id = cursor.fetchone()[0]
+
+            # Insert session
+            cursor.execute("""
+                INSERT INTO sessions (player_id, difficulty, catches, score, played_at)
+                VALUES (?,?,?,?,?)
+            """, (
+                player_id,
+                row["Difficulty"],
+                int(row["Flags"]),
+                int(row["Score"]),
+                row["Date"]
+            ))
+
+    conn.commit()
+    conn.close()
+    return True

@@ -112,6 +112,10 @@ class FlagApp(QWidget):
         btn_export.clicked.connect(self.export_csv)
         vbox.addWidget(btn_export)
 
+        btn_import = QPushButton("Import CSV")
+        btn_import.clicked.connect(self.import_csv)
+        vbox.addWidget(btn_import)
+
         return w
 
     def make_player_screen(self):
@@ -303,6 +307,18 @@ class FlagApp(QWidget):
     def export_csv(self):
         filename = db.export_to_csv()
         QMessageBox.information(self, "CSV Exported", f"CSV data properly exported as {filename}.\nInsert USB to download latest CSV.")
+
+    def import_csv(self):
+        from PyQt6.QtWidgets import QFileDialog
+        filepath, _ = QFileDialog.getOpenFileName(self, "Select CSV File", "", "CSV Files (*.csv)")
+        if filepath:
+            try:
+                db.import_from_csv(filepath)
+                self.load_players()
+                self.update_leaderboard()
+                QMessageBox.information(self, "CSV Imported", f"Successfully imported data from {filepath}.")
+            except Exception as e:
+                QMessageBox.warning(self, "Import Failed", f"Error importing CSV:\n{e}")
 
 
 # ==============================
