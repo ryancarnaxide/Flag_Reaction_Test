@@ -2,6 +2,7 @@ import sqlite3
 import os
 import csv
 from datetime import datetime
+from pathlib import Path
 
 DB_FILE = "flag_reaction_test.db"
 
@@ -137,86 +138,111 @@ def get_player_sessions(player_id):
 # ---------------------------
 # CSV Export
 # ---------------------------
-def export_to_csv(folder=None):
-    """Export all sessions to a uniquely named CSV file."""
-    folder = folder or os.getcwd()
-    today_str = datetime.now().strftime("%m-%d-%Y")
-    base_filename = os.path.join(folder, today_str)
-
-    # Count existing files
-    count = 1
-    for f in os.listdir(folder):
-        if f.startswith(today_str) and f.endswith(".csv"):
-            try:
-                num = int(f.replace(today_str+"-","").replace(".csv",""))
-                count = max(count, num+1)
-            except:
-                continue
-
-    filename = f"{base_filename}-{count}.csv"
-
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT p.name, p.position, p.side, s.difficulty, s.catches, s.score, s.played_at
-        FROM sessions s
-        JOIN players p ON p.player_id = s.player_id
-        ORDER BY s.played_at ASC
-    """)
-    rows = cursor.fetchall()
-    conn.close()
-
-    with open(filename, mode='w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(["Player", "Position", "Side", "Difficulty", "Flags", "Score", "Date"])
-        writer.writerows(rows)
-
-    return filename
-
-# ---------------------------
-# CSV Import
-# ---------------------------
-def import_from_csv(filepath):
-    """Import sessions from a CSV file into the database.
-       Expected columns: Player, Position, Side, Difficulty, Flags, Score, Date
-       Backward compatible with old CSVs without Position/Side.
+def import_from_csv(path: str):
     """
-    conn = get_connection()
-    cursor = conn.cursor()
+    Imports players from a CSV with 'name', 'position', and 'side' columns.
+    All column names are case-insensitive.
+    Returns: {"imported": N, "skipped": M, "errors": [(line_no, message), ...]}.
+    """
+    import csv
 
-    with open(filepath, newline='') as f:
+    imported, skipped = 0, 0
+    errors = []
+
+    with open(path, newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
+        if not reader.fieldnames:
+            raise ValueError("CSV has no header row.")
+
+        # Map lowercase field names to original names
+        hmap = {h.lower().strip(): h for h in reader.fieldnames}
+        if "name" not in hmap:
+            raise ValueError("CSV must have a 'name' column.")
+
+        conn = get_connection()
+        cur = conn.cursor()
+
+        line_no = 1
         for row in reader:
-            player_name = row.get("Player")
-            position = row.get("Position") if "Position" in row else None
-            side = row.get("Side") if "Side" in row else None
+            line_no += 1
+            try:
+                name = (row.get(hmap["name"]) or "").strip()
+                position = (row.get(hmap.get("position", ""), "") or "").strip()
+                side = (row.get(hmap.get("side", ""), "") or "").strip().title()
 
-            # Ensure player exists or create them (with position/side if available)
-            cursor.execute("SELECT player_id FROM players WHERE name=?", (player_name,))
-            player = cursor.fetchone()
-            if player:
-                player_id = player[0]
-            else:
-                cursor.execute(
-                    "INSERT INTO players (name, position, side) VALUES (?,?,?)",
-                    (player_name, position, side)
-                )
-                conn.commit()
-                cursor.execute("SELECT player_id FROM players WHERE name=?", (player_name,))
-                player_id = cursor.fetchone()[0]
+                if not name:
+                    skipped += 1
+                    errors.append((line_no, "Missing 'name'"))
+                    continue
 
-            # Insert session
-            cursor.execute("""
-                INSERT INTO sessions (player_id, difficulty, catches, score, played_at)
-                VALUES (?,?,?,?,?)
-            """, (
-                player_id,
-                row["Difficulty"],
-                int(row["Flags"]),
-                int(row["Score"]),
-                row["Date"]
-            ))
+                # Optional validation for side
+                if side and side not in ["Offense", "Defense", "Special Teams"]:
+                    skipped += 1
+                    errors.append((line_no, f"Invalid side: '{side}'"))
+                    continue
 
-    conn.commit()
-    conn.close()
-    return True
+                # Insert player
+                cur.execute("""
+                    INSERT OR IGNORE INTO players (name, position, side)
+                    VALUES (?, ?, ?)
+                """, (name, position or None, side or None))
+
+                imported += 1
+
+            except Exception as row_err:
+                skipped += 1
+                errors.append((line_no, str(row_err)))
+
+        conn.commit()
+        conn.close()
+
+    return {"imported": imported, "skipped": skipped, "errors": errors}
+
+# # ---------- Robust CSV Import ----------
+# def import_from_csv(path: str):
+#     """
+#     Imports player names only.
+#     CSV must have a 'name' column (case-insensitive).
+#     Other columns are ignored.
+#     Returns: {"imported": N, "skipped": M, "errors": [(line_no, message), ...]}.
+#     """
+#     import csv
+
+#     imported, skipped = 0, 0
+#     errors = []
+
+#     with open(path, newline="", encoding="utf-8-sig") as f:
+#         reader = csv.DictReader(f)
+#         if not reader.fieldnames:
+#             raise ValueError("CSV has no header row.")
+
+#         # case-insensitive header map
+#         hmap = {h.lower().strip(): h for h in reader.fieldnames}
+#         if "name" not in hmap:
+#             raise ValueError("CSV must have a 'name' column.")
+
+#         conn = get_connection()
+#         cur = conn.cursor()
+
+#         line_no = 1
+#         for row in reader:
+#             line_no += 1
+#             try:
+#                 name = (row.get(hmap["name"]) or "").strip()
+#                 if not name:
+#                     skipped += 1
+#                     errors.append((line_no, "Empty 'name'"))
+#                     continue
+
+#                 # Insert player if not exists
+#                 cur.execute("INSERT OR IGNORE INTO players (name) VALUES (?)", (name,))
+#                 imported += 1
+
+#             except Exception as row_err:
+#                 skipped += 1
+#                 errors.append((line_no, str(row_err)))
+
+#         conn.commit()
+#         conn.close()
+
+#     return {"imported": imported, "skipped": skipped, "errors": errors}
