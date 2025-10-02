@@ -390,7 +390,7 @@ class FlagApp(QWidget):
             imported = result.get("imported", 0)
             skipped = result.get("skipped", 0)
             errors = result.get("errors", [])
-            msg = [f"Imported: {imported}", f"Skipped: {skipped}"]
+            msg = [f"Successfully imported data from {path}.\nImported: {imported}", f"Skipped: {skipped}"]
             if errors:
                 preview = "\n".join([f"- Line {ln}: {err}" for ln, err in errors[:8]])
                 if len(errors) > 8:
@@ -477,17 +477,6 @@ class FlagApp(QWidget):
                             self.record_round(int(btn.text()))
                             btn.setEnabled(True)
                             break
-    def import_csv(self):
-        from PyQt6.QtWidgets import QFileDialog
-        filepath, _ = QFileDialog.getOpenFileName(self, "Select CSV File", "", "CSV Files (*.csv)")
-        if filepath:
-            try:
-                db.import_from_csv(filepath)
-                self.load_players()
-                self.update_leaderboard()
-                QMessageBox.information(self, "CSV Imported", f"Successfully imported data from {filepath}.")
-            except Exception as e:
-                QMessageBox.warning(self, "Import Failed", f"Error importing CSV:\n{e}")
 
 
 # qdialog normal can't do more than 1 entry box, making a custom version that takes in name, pos as text and side as dropbox/combobox
