@@ -138,6 +138,49 @@ def get_player_sessions(player_id):
 # ---------------------------
 # CSV Export
 # ---------------------------
+
+def export_to_csv(folder=None):
+
+    """Export all sessions to a uniquely named CSV file."""
+    folder = folder or os.getcwd()
+    today_str = datetime.now().strftime("%m-%d-%Y")
+    base_filename = os.path.join(folder, today_str)
+
+    # Count existing files
+    count = 1
+    for f in os.listdir(folder):
+        if f.startswith(today_str) and f.endswith(".csv"):
+            try:
+                num = int(f.replace(today_str+"-","").replace(".csv",""))
+                count = max(count, num+1)
+            except:
+                continue
+
+    filename = f"{base_filename}-{count}.csv"
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT p.name, s.difficulty, p.position, p.side, s.catches, s.score, s.played_at
+        FROM sessions s
+        JOIN players p ON p.player_id = s.player_id
+        ORDER BY s.played_at ASC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+
+    with open(filename, mode='w', newline='') as f:
+
+        writer = csv.writer(f)
+        writer.writerow(["Player", "Difficulty", "Position", "Side", "Flags", "Score", "Date"])
+        writer.writerows(rows)
+
+    return filename
+
+# ---------------------------
+# CSV Import
+# ---------------------------
+
 def import_from_csv(path: str):
     """
     Imports players from a CSV with 'name', 'position', and 'side' columns.

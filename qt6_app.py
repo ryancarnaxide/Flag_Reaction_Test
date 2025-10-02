@@ -15,13 +15,6 @@ import database_setup as db
 db.setup_database()
 
 # ==============================
-# Global State
-# ==============================
-current_player = None
-selected_difficulty = None
-admin_password = 'dan5171'
-
-# ==============================
 # Dark Mode Stylesheet
 # ==============================
 dark_style = """
@@ -82,7 +75,11 @@ class FlagApp(QWidget):
         self.stack.addWidget(self.go_screen)
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_countdown)
-        self.countdown_value = 5  # Internal counter for countdown
+        
+        # global values as object oriented attributes
+        self.current_player = None
+        self.selected_difficulty = None
+        self.admin_password = 'dan5171'
 
         self.load_players()
         self.update_leaderboard()
@@ -210,22 +207,11 @@ class FlagApp(QWidget):
         w = QWidget()
         vbox = QVBoxLayout(w)
         vbox.setContentsMargins(40, 20, 40, 20)
-        vbox.setSpacing(15)
+        vbox.setSpacing(5)
 
-        header = QLabel("Leaderboard (Top 10)")
-        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        header.setStyleSheet("font-weight: bold; font-size: 22px;")
-        vbox.addWidget(header)
+        # -------- Navigation Buttons
 
-        self.table = QTableWidget(0, 3)
-        self.table.setHorizontalHeaderLabels(["Player", "Difficulty", "Flags"])
-        self.table.setColumnWidth(0, 250)
-        self.table.setColumnWidth(1, 120)
-        self.table.setColumnWidth(2, 80)
-        self.table.horizontalHeader().setStretchLastSection(False)
-        self.table.setFixedHeight(300)
-        vbox.addWidget(self.table)
-
+        # adding buttons to top to reduce error where tapping 7 flags also taps back button
         nav = QHBoxLayout()
         back_btn = QPushButton("Back to Players")
         back_btn.setMinimumHeight(40)
@@ -238,6 +224,24 @@ class FlagApp(QWidget):
         nav.addWidget(again_btn)
 
         vbox.addLayout(nav)
+
+        # -------- screen header below buttons
+        header = QLabel("Leaderboard (Top 10)")
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header.setStyleSheet("font-weight: bold; font-size: 22px;")
+        vbox.addWidget(header)
+        
+        # -------- leaderboard on bottom
+        self.table = QTableWidget(0, 3)
+        self.table.setHorizontalHeaderLabels(["Player", "Difficulty", "Flags"])
+        self.table.setColumnWidth(0, 250)
+        self.table.setColumnWidth(1, 120)
+        self.table.setColumnWidth(2, 80)
+        self.table.horizontalHeader().setStretchLastSection(False)
+        self.table.setFixedHeight(400)
+        vbox.addSpacing(5)
+        vbox.addWidget(self.table)
+
         return w
 
     def make_countdown_screen(self):
@@ -283,8 +287,6 @@ class FlagApp(QWidget):
             self.player_list.addItem(item)
 
     def create_account(self):
-        global current_player
-
         dialog = PlayerInfoDialog()
         if dialog.exec():
             data = dialog.get_data()
@@ -308,30 +310,30 @@ class FlagApp(QWidget):
         self.select_player(pid)
 
     def select_player(self, pid):
-        global current_player, selected_difficulty
         player = db.get_player_by_id(pid)
         if player:
-            current_player = player
-            selected_difficulty = None
-            self.player_label.setText(f"Player: {current_player['name']}")
+            self.current_player = player
+            self.selected_difficulty = None
+            self.player_label.setText(f"Player: {self.current_player['name']}")
             self.difficulty_label.setText("Selected Mode: None")
             self.switch_to(self.player_screen)
 
     def choose_difficulty(self, diff):
-        global selected_difficulty
-        selected_difficulty = diff
+        self.selected_difficulty = diff
         self.difficulty_label.setText(f"Selected Mode: {diff}")
 
     def start_round(self):
-        if not selected_difficulty:
+        if not self.selected_difficulty:
             QMessageBox.warning(self, "No Mode", "Select a difficulty first.")
             return
-        self.switch_to(self.round_screen)
+        self.countdown_value = 5  # Reset countdown
+        self.countdown_label.setText(f"Starting in {self.countdown_value}")
+        self.switch_to(self.countdown_screen)
+        self.timer.start(1000)
 
     def record_round(self, catches):
-        global current_player, selected_difficulty
-        if current_player and selected_difficulty is not None:
-            db.record_session(current_player['id'], selected_difficulty, catches)
+        if self.current_player and self.selected_difficulty is not None:
+            db.record_session(self.current_player['id'], self.selected_difficulty, catches)
             self.update_leaderboard()
             self.switch_to(self.leaderboard_screen)
 
@@ -401,7 +403,7 @@ class FlagApp(QWidget):
 
     def login_admin(self):
         password, ok = QInputDialog.getText(self, "Admin Access", "Enter the Admin Access Code:", QLineEdit.EchoMode.Password)
-        if ok and password == admin_password:
+        if ok and password == self.admin_password:
             self.switch_to(self.start_screen)
             self.switch_to_admin_mode()
         else:
@@ -532,53 +534,6 @@ class PlayerInfoDialog(QDialog):
 
     def get_data(self):
         # returning a dictionary we can parse out above
-        return {
-            "name": self.name_input.text().strip(),
-            "position": self.position_input.text().strip(),
-            "side": self.side_dropdown.currentText()
-        }
-
-class PlayerInfoDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Enter Player Info")
-
-        # Widgets
-        self.name_input = QLineEdit()
-        self.position_input = QLineEdit()
-        self.side_dropdown = QComboBox()
-        self.side_dropdown.addItems(["Offense", "Defense", "Special Teams"])
-
-        # Layout
-        layout = QVBoxLayout()
-
-        # Name
-        layout.addLayout(self._labeled_input("Name:", self.name_input))
-        # Position
-        layout.addLayout(self._labeled_input("Position:", self.position_input))
-        # Side
-        layout.addLayout(self._labeled_input("Side:", self.side_dropdown))
-
-        # Buttons
-        btns = QHBoxLayout()
-        ok_btn = QPushButton("OK")
-        cancel_btn = QPushButton("Cancel")
-        ok_btn.clicked.connect(self.accept)
-        cancel_btn.clicked.connect(self.reject)
-        btns.addWidget(ok_btn)
-        btns.addWidget(cancel_btn)
-        layout.addLayout(btns)
-
-        self.setLayout(layout)
-
-    def _labeled_input(self, label_text, widget):
-        layout = QHBoxLayout()
-        label = QLabel(label_text)
-        layout.addWidget(label)
-        layout.addWidget(widget)
-        return layout
-
-    def get_data(self):
         return {
             "name": self.name_input.text().strip(),
             "position": self.position_input.text().strip(),
