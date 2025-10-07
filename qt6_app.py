@@ -2,22 +2,17 @@ import sys
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QListWidget, QListWidgetItem,
     QStackedWidget, QMessageBox, QInputDialog, QTableWidget, QTableWidgetItem,
-    QHBoxLayout, QGridLayout
+    QHBoxLayout, QGridLayout, QLineEdit, QFileDialog, QDialog, QComboBox
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QEvent, QTimer
+from PyQt6.QtGui import QTouchEvent
 import database_setup as db
-from datetime import datetime
+#from datetime import datetime
 
 # ==============================
 # Initialize Database
 # ==============================
 db.setup_database()
-
-# ==============================
-# Global State
-# ==============================
-current_player = None
-selected_difficulty = None
 
 # ==============================
 # Dark Mode Stylesheet
@@ -58,6 +53,7 @@ class FlagApp(QWidget):
         self.setGeometry(150, 150, 700, 550)
         self.setObjectName("MainAppWindow")
         self.setStyleSheet(dark_style)
+        self.setAttribute(Qt.WidgetAttribute.WA_AcceptTouchEvents, True)
 
         self.stack = QStackedWidget()
         layout = QVBoxLayout(self)
@@ -68,53 +64,82 @@ class FlagApp(QWidget):
         self.player_screen = self.make_player_screen()
         self.round_screen = self.make_round_screen()
         self.leaderboard_screen = self.make_leaderboard_screen()
+        self.countdown_screen = self.make_countdown_screen()
+        self.go_screen = self.make_go_screen()
 
         self.stack.addWidget(self.start_screen)
         self.stack.addWidget(self.player_screen)
         self.stack.addWidget(self.round_screen)
         self.stack.addWidget(self.leaderboard_screen)
+        self.stack.addWidget(self.countdown_screen)
+        self.stack.addWidget(self.go_screen)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_countdown)
+        
+        # global values as object oriented attributes
+        self.current_player = None
+        self.selected_difficulty = None
+        self.admin_password = 'dan5171'
 
         self.load_players()
         self.update_leaderboard()
         self.switch_to(self.start_screen)
+        self.switch_to_player_mode()
 
     # --------------------------
     # Screen Builders
     # --------------------------
     def make_start_screen(self):
         w = QWidget()
+    
+        # Main layout on `w`
         vbox = QVBoxLayout(w)
         vbox.setContentsMargins(40, 20, 40, 20)
         vbox.setSpacing(15)
-
-        header = QLabel("Select Player")
-        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        header.setStyleSheet("font-weight: bold; font-size: 22px;")
-        vbox.addWidget(header)
 
         self.player_list = QListWidget()
         self.player_list.setFixedHeight(250)
         vbox.addWidget(self.player_list)
 
-        btn_select = QPushButton("Select Player")
-        btn_select.clicked.connect(self.select_player_from_list)
-        vbox.addWidget(btn_select)
+        # Player-only button
+        self.btn_login_admin = QPushButton("Admin Login")
+        self.btn_login_admin.clicked.connect(self.login_admin)
+        vbox.addWidget(self.btn_login_admin)
 
-        btn_create = QPushButton("Create New Account")
-        btn_create.clicked.connect(self.create_account)
-        vbox.addWidget(btn_create)
+        self.header_label = QLabel("Select Player")
+        self.header_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.header_label.setStyleSheet("font-weight: bold; font-size: 22px;")
+        vbox.addWidget(self.header_label)
 
-        btn_select = QPushButton("Remove Account")
-        btn_select.clicked.connect(self.delete_player_from_list)
-        vbox.addWidget(btn_select)
+        # --- action buttons ---
+        self.btn_logout = QPushButton("Logout")
+        self.btn_logout.clicked.connect(self.logout_admin)
+        vbox.addWidget(self.btn_logout)
 
-        btn_export = QPushButton("Export CSV")
-        btn_export.clicked.connect(self.export_csv)
-        vbox.addWidget(btn_export)
+        self.btn_select = QPushButton("Select Player")
+        self.btn_select.clicked.connect(self.select_player_from_list)
+        vbox.addWidget(self.btn_select)
 
-        btn_import = QPushButton("Import CSV")
-        btn_import.clicked.connect(self.import_csv)
-        vbox.addWidget(btn_import)
+        self.btn_create = QPushButton("Create New Account")
+        self.btn_create.clicked.connect(self.create_account)
+        vbox.addWidget(self.btn_create)
+
+        self.btn_delete = QPushButton("Remove Account")
+        self.btn_delete.clicked.connect(self.delete_player_from_list)
+        vbox.addWidget(self.btn_delete)
+
+        self.btn_view = QPushButton("View Leaderboard")
+        self.btn_view.clicked.connect(lambda: self.switch_to(self.leaderboard_screen))
+        vbox.addWidget(self.btn_view)
+
+        self.btn_export = QPushButton("Export CSV")
+        self.btn_export.clicked.connect(self.export_csv)
+        vbox.addWidget(self.btn_export)
+
+        # Minimal Import CSV (admin-only visibility toggled)
+        self.btn_import = QPushButton("Import CSV")
+        self.btn_import.clicked.connect(self.import_csv)
+        vbox.addWidget(self.btn_import)
 
         return w
 
@@ -182,22 +207,11 @@ class FlagApp(QWidget):
         w = QWidget()
         vbox = QVBoxLayout(w)
         vbox.setContentsMargins(40, 20, 40, 20)
-        vbox.setSpacing(15)
+        vbox.setSpacing(5)
 
-        header = QLabel("Leaderboard (Top 10)")
-        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        header.setStyleSheet("font-weight: bold; font-size: 22px;")
-        vbox.addWidget(header)
+        # -------- Navigation Buttons
 
-        self.table = QTableWidget(0, 3)
-        self.table.setHorizontalHeaderLabels(["Player", "Difficulty", "Flags"])
-        self.table.setColumnWidth(0, 250)
-        self.table.setColumnWidth(1, 120)
-        self.table.setColumnWidth(2, 80)
-        self.table.horizontalHeader().setStretchLastSection(False)
-        self.table.setFixedHeight(300)
-        vbox.addWidget(self.table)
-
+        # adding buttons to top to reduce error where tapping 7 flags also taps back button
         nav = QHBoxLayout()
         back_btn = QPushButton("Back to Players")
         back_btn.setMinimumHeight(40)
@@ -210,6 +224,51 @@ class FlagApp(QWidget):
         nav.addWidget(again_btn)
 
         vbox.addLayout(nav)
+
+        # -------- screen header below buttons
+        header = QLabel("Leaderboard (Top 10)")
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header.setStyleSheet("font-weight: bold; font-size: 22px;")
+        vbox.addWidget(header)
+        
+        # -------- leaderboard on bottom
+        self.table = QTableWidget(0, 3)
+        self.table.setHorizontalHeaderLabels(["Player", "Difficulty", "Flags"])
+        self.table.setColumnWidth(0, 250)
+        self.table.setColumnWidth(1, 120)
+        self.table.setColumnWidth(2, 80)
+        self.table.horizontalHeader().setStretchLastSection(False)
+        self.table.setFixedHeight(400)
+        vbox.addSpacing(5)
+        vbox.addWidget(self.table)
+
+        return w
+
+    def make_countdown_screen(self):
+        w = QWidget()
+        vbox = QVBoxLayout(w)
+        vbox.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.countdown_label = QLabel("Starting in 5")
+        self.countdown_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.countdown_label.setStyleSheet("font-weight: bold; font-size: 48px;")
+        vbox.addWidget(self.countdown_label)
+
+        return w
+
+    def make_go_screen(self):
+        w = QWidget()
+        vbox = QVBoxLayout()
+        vbox.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        w.setLayout(vbox)
+
+        w.setStyleSheet("background-color: green;")
+
+        self.go_label = QLabel("GO")
+        self.go_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.go_label.setStyleSheet("font-weight: bold; font-size: 48px; color: white;")
+        vbox.addWidget(self.go_label)
+
         return w
 
     # --------------------------
@@ -220,21 +279,28 @@ class FlagApp(QWidget):
 
     def load_players(self):
         self.player_list.clear()
-        players = db.get_all_players()
-        for pid, name in players:
-            item = QListWidgetItem(name)
+        players = db.get_all_players()  # returns (player_id, name, position, side)
+        for pid, name, position, side in players:
+            display = f"{name} ({position or 'N/A'}, {side or 'N/A'})"
+            item = QListWidgetItem(display)
             item.setData(Qt.ItemDataRole.UserRole, pid)
             self.player_list.addItem(item)
 
     def create_account(self):
-        name, ok = QInputDialog.getText(self, "New Account", "Enter your name:")
-        if ok and name:
-            pid = db.create_player(name)
+        dialog = PlayerInfoDialog()
+        if dialog.exec():
+            data = dialog.get_data()
+            name = data["name"]
+            pos = data["position"]
+            side = data["side"]
+
+            pid = db.create_player(name, pos, side)
             if pid is None:
                 QMessageBox.warning(self, "Error", "Name already exists.")
                 return
             self.load_players()
-            self.select_player(pid)
+        else:
+            print("User cancelled.")
 
     def select_player_from_list(self):
         item = self.player_list.currentItem()
@@ -244,30 +310,30 @@ class FlagApp(QWidget):
         self.select_player(pid)
 
     def select_player(self, pid):
-        global current_player, selected_difficulty
         player = db.get_player_by_id(pid)
         if player:
-            current_player = player
-            selected_difficulty = None
-            self.player_label.setText(f"Player: {current_player['name']}")
+            self.current_player = player
+            self.selected_difficulty = None
+            self.player_label.setText(f"Player: {self.current_player['name']}")
             self.difficulty_label.setText("Selected Mode: None")
             self.switch_to(self.player_screen)
 
     def choose_difficulty(self, diff):
-        global selected_difficulty
-        selected_difficulty = diff
+        self.selected_difficulty = diff
         self.difficulty_label.setText(f"Selected Mode: {diff}")
 
     def start_round(self):
-        if not selected_difficulty:
+        if not self.selected_difficulty:
             QMessageBox.warning(self, "No Mode", "Select a difficulty first.")
             return
-        self.switch_to(self.round_screen)
+        self.countdown_value = 5  # Reset countdown
+        self.countdown_label.setText(f"Starting in {self.countdown_value}")
+        self.switch_to(self.countdown_screen)
+        self.timer.start(1000)
 
     def record_round(self, catches):
-        global current_player, selected_difficulty
-        if current_player and selected_difficulty is not None:
-            db.record_session(current_player['id'], selected_difficulty, catches)
+        if self.current_player and self.selected_difficulty is not None:
+            db.record_session(self.current_player['id'], self.selected_difficulty, catches)
             self.update_leaderboard()
             self.switch_to(self.leaderboard_screen)
 
@@ -279,8 +345,8 @@ class FlagApp(QWidget):
             self.table.setItem(row_num, 0, QTableWidgetItem(name))
             self.table.setItem(row_num, 1, QTableWidgetItem(diff))
             self.table.setItem(row_num, 2, QTableWidgetItem(str(catches)))
+
     def delete_player_from_list(self):
-        # get currently selected player then call delete_player(player_id) to remove their information from database, and reload list
         item = self.player_list.currentItem()
         if not item:
             return
@@ -298,6 +364,7 @@ class FlagApp(QWidget):
                 self.load_players()
         self.switch_to(self.start_screen)
 
+    # slight issue, after first time clicking play_again, automatically tosses to player_screen. No way to play indefinitely
     def play_again(self):
         global selected_difficulty
         selected_difficulty = None
@@ -308,18 +375,159 @@ class FlagApp(QWidget):
         filename = db.export_to_csv()
         QMessageBox.information(self, "CSV Exported", f"CSV data properly exported as {filename}.\nInsert USB to download latest CSV.")
 
+    # --------------------------
+    # Import CSV (names only)
+    # --------------------------
     def import_csv(self):
-        from PyQt6.QtWidgets import QFileDialog
-        filepath, _ = QFileDialog.getOpenFileName(self, "Select CSV File", "", "CSV Files (*.csv)")
-        if filepath:
-            try:
-                db.import_from_csv(filepath)
-                self.load_players()
-                self.update_leaderboard()
-                QMessageBox.information(self, "CSV Imported", f"Successfully imported data from {filepath}.")
-            except Exception as e:
-                QMessageBox.warning(self, "Import Failed", f"Error importing CSV:\n{e}")
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Import CSV", "", "CSV Files (*.csv);;All Files (*)"
+        )
+        if not path:
+            return
 
+        try:
+            result = db.import_from_csv(path)  # expects 'name' column; ignores others
+            imported = result.get("imported", 0)
+            skipped = result.get("skipped", 0)
+            errors = result.get("errors", [])
+            msg = [f"Successfully imported data from {path}.\nImported: {imported}", f"Skipped: {skipped}"]
+            if errors:
+                preview = "\n".join([f"- Line {ln}: {err}" for ln, err in errors[:8]])
+                if len(errors) > 8:
+                    preview += f"\n...and {len(errors)-8} more."
+                msg.append("\nIssues:\n" + preview)
+            QMessageBox.information(self, "CSV Import", "\n".join(msg))
+            self.load_players()
+        except Exception as ex:
+            QMessageBox.critical(self, "Import Failed", f"Error importing CSV:\n{ex}")
+
+    def login_admin(self):
+        password, ok = QInputDialog.getText(self, "Admin Access", "Enter the Admin Access Code:", QLineEdit.EchoMode.Password)
+        if ok and password == self.admin_password:
+            self.switch_to(self.start_screen)
+            self.switch_to_admin_mode()
+        else:
+            QMessageBox.warning(self, "Access Denied", "Incorrect password!")
+
+    def logout_admin(self):
+        result = QMessageBox.question(
+            self,
+            "Confirm Logout",
+            "Are you sure you want to log out of admin access?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if result == QMessageBox.StandardButton.Yes:
+            self.switch_to(self.start_screen)
+            self.switch_to_player_mode()
+
+    def switch_to_admin_mode(self):
+        self.btn_login_admin.hide()
+        self.btn_select.hide()
+        self.btn_create.show()
+        self.btn_delete.show()
+        self.btn_view.show()
+        self.btn_export.show()
+        self.btn_import.show()
+        self.btn_logout.show()
+
+        # Toggle or change header
+        self.header_label.setText("Admin Panel")
+        self.header_label.setStyleSheet("font-weight: bold; font-size: 22px; color: orange;")
+
+    def switch_to_player_mode(self):
+        self.btn_login_admin.show()
+        self.btn_select.show()
+        self.btn_create.hide()
+        self.btn_delete.hide()
+        self.btn_view.hide()
+        self.btn_export.hide()
+        self.btn_import.hide()
+        self.btn_logout.hide()
+
+        # Toggle or change header
+        self.header_label.setText("Select Player")
+        self.header_label.setStyleSheet("font-weight: bold; font-size: 22px; color: white;")
+
+    def update_countdown(self):
+        self.countdown_value -= 1
+        if self.countdown_value > 0:
+            self.countdown_label.setText(f"Starting in {self.countdown_value}")
+        else:
+            self.timer.stop()
+            self.switch_to(self.go_screen)
+            QTimer.singleShot(1000, lambda: self.switch_to(self.round_screen))
+
+    def event(self, e):
+        if e.type() in (QEvent.Type.TouchBegin, QEvent.Type.TouchUpdate, QEvent.Type.TouchEnd):
+            self.handle_touch(e)
+            e.accept()
+            return True
+        return super().event(e)
+
+    def handle_touch(self, event):
+        if isinstance(event, QTouchEvent):
+            for point in event.points():
+                pos = point.position()
+                if self.stack.currentWidget() == self.round_screen:
+                    for btn in self.round_screen.findChildren(QPushButton):
+                        local_pos = btn.mapFrom(self.round_screen, pos.toPoint())
+                        if btn.rect().contains(local_pos):
+                            # Block re-firing the clicked signal by disabling first
+                            btn.setEnabled(False)
+                            self.record_round(int(btn.text()))
+                            btn.setEnabled(True)
+                            break
+
+
+# qdialog normal can't do more than 1 entry box, making a custom version that takes in name, pos as text and side as dropbox/combobox
+class PlayerInfoDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Enter Player Info")
+
+        # Widgets
+        self.name_input = QLineEdit()
+        self.position_input = QLineEdit()
+        self.side_dropdown = QComboBox()
+        # O/D/S is what I got from Nayl, can easily switch to just O/D
+        self.side_dropdown.addItems(["Offense", "Defense", "Special Teams"])
+
+        # Layout
+        layout = QVBoxLayout()
+
+        # Name
+        layout.addLayout(self._labeled_input("Name:", self.name_input))
+        # Position
+        layout.addLayout(self._labeled_input("Position:", self.position_input))
+        # Side
+        layout.addLayout(self._labeled_input("Side:", self.side_dropdown))
+
+        # Buttons
+        btns = QHBoxLayout()
+        ok_btn = QPushButton("OK")
+        cancel_btn = QPushButton("Cancel")
+        ok_btn.clicked.connect(self.accept)
+        cancel_btn.clicked.connect(self.reject)
+        btns.addWidget(ok_btn)
+        btns.addWidget(cancel_btn)
+        layout.addLayout(btns)
+
+        self.setLayout(layout)
+
+    def _labeled_input(self, label_text, widget):
+        layout = QHBoxLayout()
+        label = QLabel(label_text)
+        layout.addWidget(label)
+        layout.addWidget(widget)
+        return layout
+
+    def get_data(self):
+        # returning a dictionary we can parse out above
+        return {
+            "name": self.name_input.text().strip(),
+            "position": self.position_input.text().strip(),
+            "side": self.side_dropdown.currentText()
+        }
 
 # ==============================
 # Run App
