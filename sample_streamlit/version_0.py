@@ -27,7 +27,7 @@ def format_with_commas(number):
 
 st.title("Streamlit YouTube Channel Dashboard")
 
-logo_icon = "images/streamlit-mark-color.png"
+logo_icon = "images/psufball.jpg"
 logo_image = "images/streamlit-logo-primary-colormark-lighttext.png"
 st.logo(icon_image=logo_icon, image=logo_image)
 
