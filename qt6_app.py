@@ -7,6 +7,13 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QEvent, QTimer
 from PyQt6.QtGui import QTouchEvent
 import database_setup as db
+
+import matplotlib.pyplot as plt
+from matplotlib.dates import DateFormatter
+from datetime import datetime
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
 #from datetime import datetime
 
 # ==============================
@@ -75,6 +82,10 @@ class FlagApp(QWidget):
         self.stack.addWidget(self.go_screen)
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_countdown)
+
+        self.stats_screen = self.make_stats_screen()
+        self.stack.addWidget(self.stats_screen)
+
         
         # global values as object oriented attributes
         self.current_player = None
@@ -242,6 +253,12 @@ class FlagApp(QWidget):
         vbox.addSpacing(5)
         vbox.addWidget(self.table)
 
+        self.btn_my_stats = QPushButton("My Stats")
+        self.btn_my_stats.setMinimumHeight(40)
+        self.btn_my_stats.clicked.connect(self.show_player_stats)
+        vbox.addWidget(self.btn_my_stats)
+
+
         return w
 
     def make_countdown_screen(self):
@@ -270,6 +287,31 @@ class FlagApp(QWidget):
         vbox.addWidget(self.go_label)
 
         return w
+    
+    def make_stats_screen(self):
+        w = QWidget()
+        vbox = QVBoxLayout(w)
+        vbox.setContentsMargins(40, 20, 40, 20)
+        vbox.setSpacing(15)
+
+        # Header
+        self.stats_header = QLabel("Player Stats")
+        self.stats_header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.stats_header.setStyleSheet("font-weight: bold; font-size: 22px;")
+        vbox.addWidget(self.stats_header)
+
+        # Matplotlib canvas
+        self.stats_canvas = FigureCanvas(Figure(figsize=(8, 5)))
+        vbox.addWidget(self.stats_canvas)
+
+        # Back button
+        back_btn = QPushButton("Back to Leaderboard")
+        back_btn.setMinimumHeight(40)
+        back_btn.clicked.connect(lambda: self.switch_to(self.leaderboard_screen))
+        vbox.addWidget(back_btn)
+
+        return w
+
 
     # --------------------------
     # Helper Methods
@@ -345,6 +387,38 @@ class FlagApp(QWidget):
             self.table.setItem(row_num, 0, QTableWidgetItem(name))
             self.table.setItem(row_num, 1, QTableWidgetItem(diff))
             self.table.setItem(row_num, 2, QTableWidgetItem(str(catches)))
+
+    def show_player_stats(self):
+        if not self.current_player:
+            QMessageBox.warning(self, "No Player", "Select a player first.")
+            return
+
+        sessions = db.get_player_sessions(self.current_player['id'])
+        if not sessions:
+            QMessageBox.information(self, "No Data", "No sessions found for this player.")
+            return
+
+        # Parse data
+        from datetime import datetime
+        dates = [datetime.strptime(row[3], "%Y-%m-%d %H:%M:%S") for row in sessions]
+        scores = [row[2] for row in sessions]
+
+        # Clear previous figure
+        self.stats_canvas.figure.clear()
+
+        # Plot on the embedded canvas
+        ax = self.stats_canvas.figure.add_subplot(111)
+        ax.plot(dates, scores, marker='o', linestyle='-', color='blue')
+        ax.set_title(f"{self.current_player['name']}'s Scores Over Time")
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Score")
+        ax.grid(True)
+        self.stats_canvas.figure.autofmt_xdate()
+        self.stats_canvas.draw()
+
+        # Switch to stats screen
+        self.switch_to(self.stats_screen)
+
 
     def delete_player_from_list(self):
         item = self.player_list.currentItem()
