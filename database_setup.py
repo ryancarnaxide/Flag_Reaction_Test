@@ -137,30 +137,45 @@ def get_player_sessions(player_id):
     rows = cursor.fetchall()
     conn.close()
     return rows
-'''
-# ---------------------------
-# CSV Export
-# ---------------------------
 
-def export_to_csv(folder=None):
 
-    """Export all sessions to a uniquely named CSV file."""
-    folder = folder or os.getcwd()
+def export_to_csv():
+    """
+    Export all session data to a CSV file in two locations:
+    1. ./CSV directory (created if it doesn't exist)
+    2. OneDrive folder (if found)
+    Returns:
+        (local_path, onedrive_path)  # onedrive_path may be None
+    """
+    from pathlib import Path
     today_str = datetime.now().strftime("%m-%d-%Y")
-    base_filename = os.path.join(folder, today_str)
 
-    # Count existing files
-    count = 1
-    for f in os.listdir(folder):
-        if f.startswith(today_str) and f.endswith(".csv"):
-            try:
-                num = int(f.replace(today_str+"-","").replace(".csv",""))
-                count = max(count, num+1)
-            except:
-                continue
+    # Local CSV folder
+    local_dir = Path.cwd() / "CSV"
+    local_dir.mkdir(exist_ok=True)
 
-    filename = f"{base_filename}-{count}.csv"
+    # Try to locate OneDrive folder
+    onedrive_dir = None
+    possible_paths = [
+        Path.home() / "OneDrive",
+        Path.home() / "OneDrive - Personal",
+        Path("/mnt/OneDrive"),
+    ]
+    for p in possible_paths:
+        if p.exists() and p.is_dir():
+            onedrive_dir = p
+            break
 
+    # Generate unique filename
+    def unique_name(folder):
+        count = 1
+        while True:
+            filename = folder / f"{today_str}-{count}.csv"
+            if not filename.exists():
+                return filename
+            count += 1
+
+    # Get DB rows
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -172,94 +187,26 @@ def export_to_csv(folder=None):
     rows = cursor.fetchall()
     conn.close()
 
-    with open(filename, mode='w', newline='') as f:
-
+    # Write to local CSV
+    local_file = unique_name(local_dir)
+    with open(local_file, mode='w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow(["Player", "Difficulty", "Position", "Side", "Flags", "Score", "Date"])
         writer.writerows(rows)
 
-    return filename
-'''
-
-def export_to_csv(initial_folder=None):
-    """
-    Export all sessions to a uniquely named CSV file.
-
-    If initial_folder is None, this will open a native file-save dialog so the user
-    can choose where to save the file. If the dialog is cancelled or tkinter is not
-    available (headless), it falls back to saving in the current working directory.
-    Returns the path to the saved file, or None if saving was cancelled.
-    """
-    # Prepare default filename
-    today_str = datetime.now().strftime("%m-%d-%Y")
-    base_name = f"{today_str}"
-    # Create a candidate unique filename in initial_folder / cwd
-    def _unique_name(folder, base):
-        count = 1
-        base_path = os.path.join(folder, base)
-        filename = f"{base_path}-{count}.csv"
-        for f in os.listdir(folder):
-            if f.startswith(base) and f.endswith(".csv"):
-                try:
-                    num = int(f.replace(base + "-", "").replace(".csv", ""))
-                    count = max(count, num + 1)
-                except Exception:
-                    continue
-        return f"{base_path}-{count}.csv"
-
-    # Try to open a save dialog if no initial_folder provided
-    chosen_path = None
-    if initial_folder is None:
+    # Write to OneDrive if available
+    onedrive_file = None
+    if onedrive_dir:
+        onedrive_file = unique_name(onedrive_dir)
         try:
-            root = tk.Tk()
-            root.withdraw()  # hide the small root window
-            initial_dir = os.getcwd()
-            suggested_path = _unique_name(initial_dir, base_name)
-            # asksaveasfilename returns '' if cancelled
-            file_path = filedialog.asksaveasfilename(
-                title="Save sessions CSV",
-                initialdir=initial_dir,
-                initialfile=os.path.basename(suggested_path),
-                defaultextension=".csv",
-                filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-            )
-            root.destroy()
-            if file_path:
-                chosen_path = file_path
-            else:
-                # user cancelled the dialog -> fallback to current dir with unique name
-                chosen_path = suggested_path
+            with open(onedrive_file, mode='w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(["Player", "Difficulty", "Position", "Side", "Flags", "Score", "Date"])
+                writer.writerows(rows)
         except Exception:
-            # e.g., running in headless environment where tkinter can't open a window
-            chosen_path = _unique_name(os.getcwd(), base_name)
-    else:
-        # initial_folder provided: ensure it exists and build unique name there
-        folder = initial_folder if os.path.isdir(initial_folder) else os.getcwd()
-        chosen_path = _unique_name(folder, base_name)
+            onedrive_file = None  # In case of error writing
 
-    # At this point chosen_path should be a path where we will write the CSV
-    try:
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT p.name, s.difficulty, p.position, p.side, s.catches, s.score, s.played_at
-            FROM sessions s
-            JOIN players p ON p.player_id = s.player_id
-            ORDER BY s.played_at ASC
-        """)
-        rows = cursor.fetchall()
-        conn.close()
-    except Exception:
-        # If DB read fails, propagate the error — optional: return None instead
-        raise
-
-    # Write CSV
-    with open(chosen_path, mode='w', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        writer.writerow(["Player", "Difficulty", "Position", "Side", "Flags", "Score", "Date"])
-        writer.writerows(rows)
-
-    return chosen_path
+    return local_file, onedrive_file
 
 
 # ---------------------------
