@@ -370,10 +370,24 @@ class FlagApp(QWidget):
         selected_difficulty = None
         self.difficulty_label.setText("Selected Mode: None")
         self.switch_to(self.player_screen)
-
+    
     def export_csv(self):
-        filename = db.export_to_csv()
-        QMessageBox.information(self, "CSV Exported", f"CSV data properly exported as {filename}.\nInsert USB to download latest CSV.")
+        local_path, onedrive_path = db.export_to_csv()
+
+        if local_path and onedrive_path:
+            message = (
+                f"✅ CSV successfully exported to both locations:\n\n"
+                f"📂 Local: {local_path}\n"
+                f"☁️ OneDrive: {onedrive_path}"
+            )
+        elif local_path:
+            message = f"✅ CSV successfully exported locally to:\n\n📂 {local_path}\n\n⚠️ OneDrive not found or unavailable."
+        elif onedrive_path:
+            message = f"✅ CSV successfully exported to OneDrive:\n\n☁️ {onedrive_path}"
+        else:
+            message = "❌ CSV export failed — no files were created."
+
+        QMessageBox.information(self, "CSV Export", message)
 
     # --------------------------
     # Import CSV (names only)
