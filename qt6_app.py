@@ -1,11 +1,11 @@
 import sys
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QListWidget, QListWidgetItem,
     QStackedWidget, QMessageBox, QInputDialog, QTableWidget, QTableWidgetItem,
     QHBoxLayout, QGridLayout, QLineEdit, QFileDialog, QDialog, QComboBox
 )
-from PyQt6.QtCore import Qt, QEvent, QTimer
-from PyQt6.QtGui import QTouchEvent
+from PyQt5.QtCore import Qt, QEvent, QTimer
+from PyQt5.QtGui import QTouchEvent
 import database_setup as db
 
 import matplotlib.pyplot as plt

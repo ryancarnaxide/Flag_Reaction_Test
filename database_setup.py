@@ -138,35 +138,60 @@ def get_player_sessions(player_id):
     conn.close()
     return rows
 
+def find_onedrive_path():
+    """
+    Cross-platform detection of the user's OneDrive folder.
+    Returns Path object or None if not found.
+    """
+    import platform
+    from pathlib import Path
+
+    home = Path.home()
+    system = platform.system()
+    candidates = []
+
+    # --- Windows typical paths ---
+    candidates += [
+        home / "OneDrive",
+        home / "OneDrive - Personal",
+    ]
+
+    # --- macOS typical CloudStorage path ---
+    if system == "Darwin":
+        cloud_root = home / "Library" / "CloudStorage"
+        if cloud_root.exists():
+            for folder in cloud_root.iterdir():
+                if folder.name.startswith("OneDrive"):
+                    candidates.append(folder)
+
+    # --- Linux / WSL fallback ---
+    candidates.append(Path("/mnt/OneDrive"))
+
+    for path in candidates:
+        if path.exists() and path.is_dir():
+            return path
+    return None
+
 
 def export_to_csv():
     """
     Export all session data to a CSV file in two locations:
-    1. ./CSV directory (created if it doesn't exist)
-    2. OneDrive folder (if found)
+      1. ./CSV directory (created if it doesn't exist)
+      2. OneDrive folder (if found on Windows or macOS)
     Returns:
         (local_path, onedrive_path)  # onedrive_path may be None
     """
     from pathlib import Path
+    from datetime import datetime
+    import csv
+    import shutil
+
     today_str = datetime.now().strftime("%m-%d-%Y")
 
-    # Local CSV folder
+    # ---- Local CSV folder ----
     local_dir = Path.cwd() / "CSV"
     local_dir.mkdir(exist_ok=True)
 
-    # Try to locate OneDrive folder
-    onedrive_dir = None
-    possible_paths = [
-        Path.home() / "OneDrive",
-        Path.home() / "OneDrive - Personal",
-        Path("/mnt/OneDrive"),
-    ]
-    for p in possible_paths:
-        if p.exists() and p.is_dir():
-            onedrive_dir = p
-            break
-
-    # Generate unique filename
     def unique_name(folder):
         count = 1
         while True:
@@ -175,7 +200,7 @@ def export_to_csv():
                 return filename
             count += 1
 
-    # Get DB rows
+    # ---- Get data from DB ----
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -187,27 +212,27 @@ def export_to_csv():
     rows = cursor.fetchall()
     conn.close()
 
-    # Write to local CSV
+    # ---- Write local CSV ----
     local_file = unique_name(local_dir)
-    with open(local_file, mode='w', newline='', encoding='utf-8') as f:
+    with open(local_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["Player", "Difficulty", "Position", "Side", "Flags", "Score", "Date"])
         writer.writerows(rows)
 
-    # Write to OneDrive if available
+    # ---- Try to also copy to OneDrive ----
+    onedrive_dir = find_onedrive_path()
     onedrive_file = None
     if onedrive_dir:
-        onedrive_file = unique_name(onedrive_dir)
         try:
-            with open(onedrive_file, mode='w', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f)
-                writer.writerow(["Player", "Difficulty", "Position", "Side", "Flags", "Score", "Date"])
-                writer.writerows(rows)
-        except Exception:
-            onedrive_file = None  # In case of error writing
+            target_dir = onedrive_dir / "Flag_Reaction_Test" / "CSV"
+            target_dir.mkdir(parents=True, exist_ok=True)
+            onedrive_file = unique_name(target_dir)
+            shutil.copy(local_file, onedrive_file)
+        except Exception as e:
+            print(f"Error exporting to OneDrive: {e}")
+            onedrive_file = None
 
     return local_file, onedrive_file
-
 
 # ---------------------------
 # CSV Import
