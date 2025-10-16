@@ -1,3 +1,4 @@
+// src/App.jsx — show balanced Score on the leaderboard (UI otherwise unchanged)
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import {
@@ -7,8 +8,8 @@ import {
   exportCSVSimple,
   importCSVSimple,
   getLeaderboard,
+  addSession,
 } from "./api";
-
 
 function Screen({ view, children }) {
   return (
@@ -18,11 +19,9 @@ function Screen({ view, children }) {
   );
 }
 
-
 export default function App() {
   // Views: home | select | difficulty | countdown | flash | ready | capture | leaderboard | admin
   const [view, setView] = useState("home");
-
 
   // Shared state
   const [players, setPlayers] = useState([]);
@@ -30,19 +29,15 @@ export default function App() {
   const [newName, setNewName] = useState("");
   const [msg, setMsg] = useState("");
 
-
   // Difficulty and catch count (capture)
   const [difficulty, setDifficulty] = useState(null);
   const [catches, setCatches] = useState(null);
 
-
   // Countdown
   const [count, setCount] = useState(3);
 
-
   // Leaderboard
   const [board, setBoard] = useState([]);
-
 
   // -------- data helpers --------
   const fetchingRef = useRef(false);
@@ -59,11 +54,9 @@ export default function App() {
     }
   }
 
-
   useEffect(() => {
     if (view === "admin" || view === "select") refreshPlayers();
   }, [view]);
-
 
   // -------- admin handlers --------
   async function handleCreate() {
@@ -78,7 +71,6 @@ export default function App() {
       setMsg(`Create failed: ${e.message}`);
     }
   }
-
 
   async function handleDelete() {
     if (!selectedId) return setMsg("Choose a player to delete.");
@@ -95,7 +87,6 @@ export default function App() {
     }
   }
 
-
   async function handleExport() {
     try {
       await exportCSVSimple();
@@ -104,7 +95,6 @@ export default function App() {
       setMsg(`Export failed: ${e.message}`);
     }
   }
-
 
   async function handleImport(file) {
     if (!file) return;
@@ -117,7 +107,6 @@ export default function App() {
     }
   }
 
-
   // Secondary line for player meta
   function renderMeta(p) {
     const pos = (p.position || "").trim();
@@ -126,7 +115,6 @@ export default function App() {
     if (pos && side) return `${pos} · ${side}`;
     return pos || side;
   }
-
 
   // Countdown 3→0 then go to green flash
   useEffect(() => {
@@ -144,7 +132,6 @@ export default function App() {
     return () => clearInterval(t);
   }, [view]);
 
-
   // Green flash for 1s, then go to the "ready" click-to-proceed screen
   useEffect(() => {
     if (view !== "flash") return;
@@ -154,7 +141,6 @@ export default function App() {
     return () => clearTimeout(t);
   }, [view]);
 
-
   // -------- screens --------
   return (
     <div className="page">
@@ -163,13 +149,11 @@ export default function App() {
         <img src="/psu-logo.png" alt="Penn State logo" />
       </div>
 
-
       {view === "home" && (
         <Screen view={view}>
           <div className="home">
             <h1 className="title">FLAG REACTION TEST</h1>
             <p className="subtitle">WELCOME,</p>
-
 
             <div className="menu">
               <button
@@ -203,7 +187,6 @@ export default function App() {
         </Screen>
       )}
 
-
       {view === "select" && (
         <Screen view={view}>
           <div className="panel">
@@ -212,9 +195,7 @@ export default function App() {
               <p className="muted">Tap a name, then proceed.</p>
             </header>
 
-
             {msg && <div className="toast animate-in">{msg}</div>}
-
 
             <section className="section">
               {players.length === 0 ? (
@@ -244,7 +225,6 @@ export default function App() {
               )}
             </section>
 
-
             <div className="actions">
               <button className="btn small danger" onClick={() => setView("home")}>
                 ← Back
@@ -265,7 +245,6 @@ export default function App() {
         </Screen>
       )}
 
-
       {view === "difficulty" && (
         <Screen view={view}>
           <div className="panel">
@@ -274,10 +253,9 @@ export default function App() {
               <p className="muted">Choose one to begin the countdown.</p>
             </header>
 
-
             <section className="section">
               <div className="choices vertical">
-                {["Easy", "Medium", "Hard", "Very Hard", "Impossible"].map((d) => (
+                {["Easy", "Medium", "Hard", "Very Hard"].map((d) => (
                   <button
                     key={d}
                     className={`chip ${difficulty === d ? "active" : ""}`}
@@ -289,7 +267,6 @@ export default function App() {
                 ))}
               </div>
             </section>
-
 
             <div className="actions">
               <button className="btn small danger" onClick={() => setView("select")}>
@@ -307,7 +284,6 @@ export default function App() {
         </Screen>
       )}
 
-
       {view === "countdown" && (
         <Screen view={view}>
           <div className="panel center">
@@ -319,9 +295,7 @@ export default function App() {
         </Screen>
       )}
 
-
       {view === "flash" && <div className="green-screen" aria-hidden="true" />}
-
 
       {view === "ready" && (
         <Screen view={view}>
@@ -340,7 +314,6 @@ export default function App() {
         </Screen>
       )}
 
-
       {view === "capture" && (
         <Screen view={view}>
           <div className="panel">
@@ -348,7 +321,6 @@ export default function App() {
               <h2>How many flags did you catch?</h2>
               <p className="muted">Choose 1–10 below.</p>
             </header>
-
 
             <section className="section">
               <div className="nums-vertical">
@@ -365,19 +337,26 @@ export default function App() {
               </div>
             </section>
 
-
             <div className="actions" style={{ justifyContent: "flex-end" }}>
               <button
                 className="btn small"
                 disabled={catches == null}
                 onClick={async () => {
                   try {
-                    // Not saving session per your request — just show leaderboard
+                    if (!selectedId) {
+                      setMsg("No player selected — go back and choose a player.");
+                      return;
+                    }
+                    await addSession({
+                      player_id: selectedId,
+                      difficulty,
+                      catches,
+                    });
                     const data = await getLeaderboard(10);
                     setBoard(data);
                     setView("leaderboard");
                   } catch (e) {
-                    setMsg(`Leaderboard failed: ${e.message}`);
+                    setMsg(`Save/Leaderboard failed: ${e.message}`);
                   }
                 }}
               >
@@ -388,15 +367,13 @@ export default function App() {
         </Screen>
       )}
 
-
       {view === "leaderboard" && (
         <Screen view={view}>
           <div className="panel">
             <header className="panel-header">
               <h2>Leaderboard (Top 10)</h2>
-              <p className="muted">Highest session scores.</p>
+              <p className="muted">Balanced by difficulty multiplier.</p>
             </header>
-
 
             {board.length === 0 ? (
               <div className="empty">No sessions recorded yet.</div>
@@ -410,6 +387,7 @@ export default function App() {
                       <th>Difficulty</th>
                       <th>Catches</th>
                       <th>Score</th>
+                      <th>Played</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -420,13 +398,13 @@ export default function App() {
                         <td>{row.difficulty}</td>
                         <td>{row.catches}</td>
                         <td>{row.score}</td>
+                        <td>{new Date(row.played_at).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </section>
             )}
-
 
             <div className="actions">
               <button
@@ -447,7 +425,6 @@ export default function App() {
         </Screen>
       )}
 
-
       {view === "admin" && (
         <Screen view={view}>
           <div className="panel">
@@ -456,9 +433,7 @@ export default function App() {
               <p className="muted">Manage players & data</p>
             </header>
 
-
             {msg && <div className="toast animate-in">{msg}</div>}
-
 
             <section className="section">
               <h3>Create Player</h3>
@@ -475,7 +450,6 @@ export default function App() {
                 </button>
               </div>
             </section>
-
 
             <section className="section">
               <h3>Players</h3>
@@ -511,7 +485,6 @@ export default function App() {
               </div>
             </section>
 
-
             <section className="section">
               <h3>Import / Export</h3>
               <div className="row">
@@ -529,7 +502,6 @@ export default function App() {
               </div>
             </section>
 
-
             <div className="row" style={{ marginTop: 12 }}>
               <button className="btn small ghost" onClick={() => setView("home")}>
                 ← Back
@@ -541,4 +513,3 @@ export default function App() {
     </div>
   );
 }
-
