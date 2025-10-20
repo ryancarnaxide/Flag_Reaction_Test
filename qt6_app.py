@@ -100,6 +100,7 @@ class FlagApp(QWidget):
     # --------------------------
     # Screen Builders
     # --------------------------
+    '''
     def make_start_screen(self):
         w = QWidget()
     
@@ -153,6 +154,80 @@ class FlagApp(QWidget):
         vbox.addWidget(self.btn_import)
 
         return w
+    '''
+    def make_start_screen(self):
+        w = QWidget()
+    
+        # Main vertical layout
+        vbox = QVBoxLayout(w)
+        vbox.setContentsMargins(40, 20, 40, 20)
+        vbox.setSpacing(15)
+
+        # ---------------------------
+        # Header (still useful for admin/player modes)
+        # ---------------------------
+        self.header_label = QLabel("Select Player")
+        self.header_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.header_label.setStyleSheet("font-weight: bold; font-size: 22px; color: white;")
+        vbox.addWidget(self.header_label)
+
+        # ---------------------------
+        # Player List (now larger)
+        # ---------------------------
+        self.player_list = QListWidget()
+        self.player_list.setFixedHeight(350)  # ⬅️ Increased height for more visibility
+        vbox.addWidget(self.player_list)
+
+        # ---------------------------
+        # Select Player Button (moved directly below list)
+        # ---------------------------
+        self.btn_select = QPushButton("Select Player")
+        self.btn_select.setMinimumHeight(50)
+        self.btn_select.clicked.connect(self.select_player_from_list)
+        vbox.addWidget(self.btn_select)
+
+        # ---------------------------
+        # Spacer pushes admin button to bottom
+        # ---------------------------
+        vbox.addStretch()
+
+        # ---------------------------
+        # Admin Login at bottom of screen
+        # ---------------------------
+        self.btn_login_admin = QPushButton("Admin Login")
+        self.btn_login_admin.setMinimumHeight(40)
+        self.btn_login_admin.clicked.connect(self.login_admin)
+        vbox.addWidget(self.btn_login_admin)
+
+        # ---------------------------
+        # Hidden admin-only buttons (remain for admin mode)
+        # ---------------------------
+        self.btn_logout = QPushButton("Logout")
+        self.btn_logout.clicked.connect(self.logout_admin)
+        vbox.addWidget(self.btn_logout)
+
+        self.btn_create = QPushButton("Create New Account")
+        self.btn_create.clicked.connect(self.create_account)
+        vbox.addWidget(self.btn_create)
+
+        self.btn_delete = QPushButton("Remove Account")
+        self.btn_delete.clicked.connect(self.delete_player_from_list)
+        vbox.addWidget(self.btn_delete)
+
+        self.btn_view = QPushButton("View Leaderboard")
+        self.btn_view.clicked.connect(lambda: self.switch_to(self.leaderboard_screen))
+        vbox.addWidget(self.btn_view)
+
+        self.btn_export = QPushButton("Export CSV")
+        self.btn_export.clicked.connect(self.export_csv)
+        vbox.addWidget(self.btn_export)
+
+        self.btn_import = QPushButton("Import CSV")
+        self.btn_import.clicked.connect(self.import_csv)
+        vbox.addWidget(self.btn_import)
+
+        return w
+
 
     def make_player_screen(self):
         w = QWidget()
