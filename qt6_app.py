@@ -14,6 +14,14 @@ from datetime import datetime
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+#NEW
+import random
+try:
+    import RPi.GPIO as GPIO
+    _GPIO_AVAILABLE = True
+except Exception:
+    _GPIO_AVAILABLE = False
+
 #from datetime import datetime
 
 # ==============================
@@ -98,6 +106,13 @@ class FlagApp(QWidget):
         self.switch_to(self.start_screen)
         self.switch_to_player_mode()
 
+        #NEW
+                # GPIO init: magnets ON at app open
+        self.init_gpio()
+        # Ensure cleanup on app exit
+        QTimer.singleShot(0, lambda: QApplication.instance().aboutToQuit.connect(self.gpio_cleanup))
+
+
     # --------------------------
     # Screen Builders
     # --------------------------
@@ -156,6 +171,74 @@ class FlagApp(QWidget):
 
         return w
     '''
+    #NEW 
+        # --------------------------
+    # GPIO (Magnets)
+    # --------------------------
+    MAGNET_PINS = [5, 6, 16, 17, 20, 21, 22, 23, 24, 25]  # BCM numbering
+
+    def init_gpio(self):
+        """Initialize GPIO and turn all magnets ON at app start."""
+        if not _GPIO_AVAILABLE:
+            print("[GPIO] Not available on this system. Running in UI-only mode.")
+            return
+        GPIO.setmode(GPIO.BCM)
+        for p in self.MAGNET_PINS:
+            GPIO.setup(p, GPIO.OUT, initial=GPIO.HIGH)
+        print("[GPIO] Initialized. All magnets ON.")
+
+    def gpio_all_on(self):
+        if not _GPIO_AVAILABLE:
+            return
+        for p in self.MAGNET_PINS:
+            GPIO.output(p, GPIO.HIGH)
+        print("[GPIO] All magnets ON.")
+
+    def gpio_all_off(self):
+        if not _GPIO_AVAILABLE:
+            return
+        for p in self.MAGNET_PINS:
+            GPIO.output(p, GPIO.LOW)
+        print("[GPIO] All magnets OFF.")
+
+    def gpio_cleanup(self):
+        if not _GPIO_AVAILABLE:
+            return
+        try:
+            self.gpio_all_off()
+        finally:
+            GPIO.cleanup()
+            print("[GPIO] Cleanup complete.")
+
+    # --------------------------
+    # Flag drop sequence (random OFF until none remain)
+    # --------------------------
+    def start_flag_drop_sequence(self):
+        """Begin random turn-off of pins during GO screen."""
+        # Ensure we start from all ON at GO
+        self.gpio_all_on()
+        self._remaining_pins = list(self.MAGNET_PINS)
+        self._schedule_next_drop()
+
+    def _schedule_next_drop(self):
+        """Schedule the next magnet drop within a random interval up to 2 seconds."""
+        if not self._remaining_pins:
+            # All off -> proceed to round screen
+            self.switch_to(self.round_screen)
+            return
+        interval_ms = int(random.uniform(400, 2000))  # within 2 seconds
+        QTimer.singleShot(interval_ms, self._turn_off_next_pin)
+
+    def _turn_off_next_pin(self):
+        """Turn off a random remaining pin, then schedule the next."""
+        if self._remaining_pins and _GPIO_AVAILABLE:
+            pin = random.choice(self._remaining_pins)
+            GPIO.output(pin, GPIO.LOW)
+            self._remaining_pins.remove(pin)
+            print(f"[GPIO] Magnet GPIO{pin} OFF. {len(self._remaining_pins)} remaining.")
+        self._schedule_next_drop()
+
+
     def make_start_screen(self):
         w = QWidget()
     
@@ -455,6 +538,10 @@ class FlagApp(QWidget):
         if not self.selected_difficulty:
             QMessageBox.warning(self, "No Mode", "Select a difficulty first.")
             return
+        #NEW
+        # Ensure all magnets are ON at round start
+        self.gpio_all_on()
+
         self.countdown_value = 5  # Reset countdown
         self.countdown_label.setText(f"Starting in {self.countdown_value}")
         self.switch_to(self.countdown_screen)
@@ -463,6 +550,11 @@ class FlagApp(QWidget):
     def record_round(self, catches):
         if self.current_player and self.selected_difficulty is not None:
             db.record_session(self.current_player['id'], self.selected_difficulty, catches)
+            
+            #NEW
+            # Clear all magnets after recording the round
+            self.gpio_all_off()
+
             self.update_leaderboard()
             self.switch_to(self.leaderboard_screen)
 
@@ -530,6 +622,11 @@ class FlagApp(QWidget):
         global selected_difficulty
         selected_difficulty = None
         self.difficulty_label.setText("Selected Mode: None")
+
+        #NEW
+        # Ensure magnets are OFF before a new selection
+        self.gpio_all_off()
+
         self.switch_to(self.player_screen)
     
     def export_csv(self):
@@ -631,10 +728,16 @@ class FlagApp(QWidget):
         self.countdown_value -= 1
         if self.countdown_value > 0:
             self.countdown_label.setText(f"Starting in {self.countdown_value}")
+        #else:
+        #    self.timer.stop()
+        #    self.switch_to(self.go_screen)
+        #    QTimer.singleShot(1000, lambda: self.switch_to(self.round_screen))
+        #NEW
         else:
             self.timer.stop()
             self.switch_to(self.go_screen)
-            QTimer.singleShot(1000, lambda: self.switch_to(self.round_screen))
+            # Begin random OFF sequence until all magnets are off, then move to round screen
+            self.start_flag_drop_sequence()
 
     def event(self, e):
         if e.type() in (QEvent.Type.TouchBegin, QEvent.Type.TouchUpdate, QEvent.Type.TouchEnd):
