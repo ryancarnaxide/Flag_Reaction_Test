@@ -57,7 +57,8 @@ class FlagApp(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Flag Reaction Test (Dark Mode)")
-        self.setGeometry(150, 150, 700, 550)
+        self.setGeometry(150, 150, 700, 700)
+        self.setFixedSize(self.size())
         self.setObjectName("MainAppWindow")
         self.setStyleSheet(dark_style)
         self.setAttribute(Qt.WidgetAttribute.WA_AcceptTouchEvents, True)
@@ -175,7 +176,18 @@ class FlagApp(QWidget):
         # Player List (now larger)
         # ---------------------------
         self.player_list = QListWidget()
-        self.player_list.setFixedHeight(350)  # ⬅️ Increased height for more visibility
+        self.player_list.setStyleSheet("""
+        QListWidget {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        QListWidget::item {
+            padding: 5px 5px;
+            height: 40px;
+        }
+        """)
+
+        #self.player_list.setFixedHeight(250)  # ⬅️ Increased height for more visibility
         vbox.addWidget(self.player_list)
 
         # ---------------------------
@@ -202,21 +214,17 @@ class FlagApp(QWidget):
         # ---------------------------
         # Hidden admin-only buttons (remain for admin mode)
         # ---------------------------
-        self.btn_logout = QPushButton("Logout")
-        self.btn_logout.clicked.connect(self.logout_admin)
-        vbox.addWidget(self.btn_logout)
-
-        self.btn_create = QPushButton("Create New Account")
+        self.btn_create = QPushButton("Add New Player")
         self.btn_create.clicked.connect(self.create_account)
         vbox.addWidget(self.btn_create)
 
-        self.btn_delete = QPushButton("Remove Account")
+        self.btn_delete = QPushButton("Remove Selected Player")
         self.btn_delete.clicked.connect(self.delete_player_from_list)
         vbox.addWidget(self.btn_delete)
 
-        self.btn_view = QPushButton("View Leaderboard")
-        self.btn_view.clicked.connect(lambda: self.switch_to(self.leaderboard_screen))
-        vbox.addWidget(self.btn_view)
+        #self.btn_view = QPushButton("View Leaderboard")
+        #self.btn_view.clicked.connect(lambda: self.switch_to(self.leaderboard_screen))
+        #vbox.addWidget(self.btn_view)
 
         self.btn_export = QPushButton("Export CSV")
         self.btn_export.clicked.connect(self.export_csv)
@@ -225,6 +233,10 @@ class FlagApp(QWidget):
         self.btn_import = QPushButton("Import CSV")
         self.btn_import.clicked.connect(self.import_csv)
         vbox.addWidget(self.btn_import)
+
+        self.btn_logout = QPushButton("Logout")
+        self.btn_logout.clicked.connect(self.logout_admin)
+        vbox.addWidget(self.btn_logout)
 
         return w
 
@@ -588,7 +600,7 @@ class FlagApp(QWidget):
         self.btn_select.hide()
         self.btn_create.show()
         self.btn_delete.show()
-        self.btn_view.show()
+        #self.btn_view.show()
         self.btn_export.show()
         self.btn_import.show()
         self.btn_logout.show()
@@ -597,12 +609,14 @@ class FlagApp(QWidget):
         self.header_label.setText("Admin Panel")
         self.header_label.setStyleSheet("font-weight: bold; font-size: 22px; color: orange;")
 
+        self.player_list.setFixedHeight(250)
+
     def switch_to_player_mode(self):
         self.btn_login_admin.show()
         self.btn_select.show()
         self.btn_create.hide()
         self.btn_delete.hide()
-        self.btn_view.hide()
+        #self.btn_view.hide()
         self.btn_export.hide()
         self.btn_import.hide()
         self.btn_logout.hide()
@@ -610,6 +624,8 @@ class FlagApp(QWidget):
         # Toggle or change header
         self.header_label.setText("Select Player")
         self.header_label.setStyleSheet("font-weight: bold; font-size: 22px; color: white;")
+
+        self.player_list.setFixedHeight(450)
 
     def update_countdown(self):
         self.countdown_value -= 1
