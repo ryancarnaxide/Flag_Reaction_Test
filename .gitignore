@@ -10,3 +10,6 @@ __pycache__/
 
 #Ignore CSV files
 *.csv
+
+# Ignore any virtual environment files
+venv/
