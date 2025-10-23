@@ -76,7 +76,8 @@ export default function App() {
     if (!selectedId) return setMsg("Choose a player to delete.");
     const picked = players.find((p) => p.id === selectedId);
     if (!picked) return;
-    if (!confirm(`Delete ${picked.name}? This also deletes their sessions.`)) return;
+    if (!confirm(`Delete ${picked.name}? This also deletes their sessions.`))
+      return;
     try {
       await deletePlayer(selectedId);
       setMsg(`Deleted: ${picked.name}`);
@@ -100,7 +101,9 @@ export default function App() {
     if (!file) return;
     try {
       const res = await importCSVSimple(file);
-      setMsg(`Import complete — Imported: ${res.imported}, Skipped: ${res.skipped}`);
+      setMsg(
+        `Import complete — Imported: ${res.imported}, Skipped: ${res.skipped}`
+      );
       await refreshPlayers();
     } catch (e) {
       setMsg(`Import failed: ${e.message}`);
@@ -201,7 +204,10 @@ export default function App() {
               {players.length === 0 ? (
                 <div className="empty">No players yet. Add some in Admin.</div>
               ) : (
-                <ul className="list" style={{ maxHeight: 380, overflowY: "auto" }}>
+                <ul
+                  className="list"
+                  style={{ maxHeight: 380, overflowY: "auto" }}
+                >
                   {players
                     .slice()
                     .sort((a, b) => a.name.localeCompare(b.name))
@@ -210,7 +216,9 @@ export default function App() {
                       return (
                         <li
                           key={p.id}
-                          className={`list-item ${selectedId === p.id ? "selected" : ""}`}
+                          className={`list-item ${
+                            selectedId === p.id ? "selected" : ""
+                          }`}
                           onClick={() => setSelectedId(p.id)}
                           aria-selected={selectedId === p.id}
                         >
@@ -226,7 +234,10 @@ export default function App() {
             </section>
 
             <div className="actions">
-              <button className="btn small danger" onClick={() => setView("home")}>
+              <button
+                className="btn small danger"
+                onClick={() => setView("home")}
+              >
                 ← Back
               </button>
               <button
@@ -269,7 +280,10 @@ export default function App() {
             </section>
 
             <div className="actions">
-              <button className="btn small danger" onClick={() => setView("select")}>
+              <button
+                className="btn small danger"
+                onClick={() => setView("select")}
+              >
                 ← Back
               </button>
               <button
@@ -305,7 +319,9 @@ export default function App() {
               onClick={() => setView("capture")}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setView("capture")}
+              onKeyDown={(e) =>
+                (e.key === "Enter" || e.key === " ") && setView("capture")
+              }
             >
               Click to proceed
             </div>
@@ -319,12 +335,12 @@ export default function App() {
           <div className="panel">
             <header className="panel-header">
               <h2>How many flags did you catch?</h2>
-              <p className="muted">Choose 1–10 below.</p>
+              <p className="muted">Choose 0–10 below.</p>
             </header>
 
             <section className="section">
               <div className="nums-vertical">
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                {Array.from({ length: 11 }, (_, i) => i).map((n) => (
                   <button
                     key={n}
                     type="button"
@@ -344,7 +360,9 @@ export default function App() {
                 onClick={async () => {
                   try {
                     if (!selectedId) {
-                      setMsg("No player selected — go back and choose a player.");
+                      setMsg(
+                        "No player selected — go back and choose a player."
+                      );
                       return;
                     }
                     await addSession({
@@ -417,7 +435,10 @@ export default function App() {
               >
                 Play Again
               </button>
-              <button className="btn small ghost" onClick={() => setView("home")}>
+              <button
+                className="btn small ghost"
+                onClick={() => setView("home")}
+              >
                 Return to Start
               </button>
             </div>
@@ -456,13 +477,18 @@ export default function App() {
               {players.length === 0 ? (
                 <div className="empty">No players yet.</div>
               ) : (
-                <ul className="list" style={{ maxHeight: 340, overflowY: "auto" }}>
+                <ul
+                  className="list"
+                  style={{ maxHeight: 340, overflowY: "auto" }}
+                >
                   {players.map((p) => {
                     const meta = renderMeta(p);
                     return (
                       <li
                         key={p.id}
-                        className={`list-item ${selectedId === p.id ? "selected" : ""}`}
+                        className={`list-item ${
+                          selectedId === p.id ? "selected" : ""
+                        }`}
                         onClick={() => setSelectedId(p.id)}
                         aria-selected={selectedId === p.id}
                       >
@@ -476,7 +502,11 @@ export default function App() {
                 </ul>
               )}
               <div className="row" style={{ marginTop: 10 }}>
-                <button className="btn small danger" onClick={handleDelete} disabled={!selectedId}>
+                <button
+                  className="btn small danger"
+                  onClick={handleDelete}
+                  disabled={!selectedId}
+                >
                   Delete Selected
                 </button>
                 <button className="btn small ghost" onClick={refreshPlayers}>
@@ -493,7 +523,9 @@ export default function App() {
                   <input
                     type="file"
                     accept=".csv,text/csv"
-                    onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])}
+                    onChange={(e) =>
+                      e.target.files?.[0] && handleImport(e.target.files[0])
+                    }
                   />
                 </label>
                 <button className="btn small" onClick={handleExport}>
@@ -503,7 +535,10 @@ export default function App() {
             </section>
 
             <div className="row" style={{ marginTop: 12 }}>
-              <button className="btn small ghost" onClick={() => setView("home")}>
+              <button
+                className="btn small ghost"
+                onClick={() => setView("home")}
+              >
                 ← Back
               </button>
             </div>
