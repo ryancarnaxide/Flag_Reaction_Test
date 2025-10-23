@@ -14,15 +14,13 @@ from datetime import datetime
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-#NEW
+# GPIO control via our helper module
 import random
 try:
-    import RPi.GPIO as GPIO
-    _GPIO_AVAILABLE = True
+    import io_control as io  # uses RPi.GPIO under the hood
+    _IO_AVAILABLE = True
 except Exception:
-    _GPIO_AVAILABLE = False
-
-#from datetime import datetime
+    _IO_AVAILABLE = False
 
 # ==============================
 # Initialize Database
@@ -95,8 +93,7 @@ class FlagApp(QWidget):
         self.stats_screen = self.make_stats_screen()
         self.stack.addWidget(self.stats_screen)
 
-        
-        # global values as object oriented attributes
+        # global values
         self.current_player = None
         self.selected_difficulty = None
         self.admin_password = 'dan5171'
@@ -106,158 +103,66 @@ class FlagApp(QWidget):
         self.switch_to(self.start_screen)
         self.switch_to_player_mode()
 
-        #NEW
-                # GPIO init: magnets ON at app open
-        self.init_gpio()
-        # Ensure cleanup on app exit
-        QTimer.singleShot(0, lambda: QApplication.instance().aboutToQuit.connect(self.gpio_cleanup))
+        # GPIO init and cleanup hook
+        if _IO_AVAILABLE:
+            io.io_setup()
+            QApplication.instance().aboutToQuit.connect(io.io_cleanup)
 
+        # used during GO sequence
+        self._remaining_pins = []
 
     # --------------------------
-    # Screen Builders
+    # GPIO wrapper methods
     # --------------------------
-    '''
-    def make_start_screen(self):
-        w = QWidget()
-    
-        # Main layout on `w`
-        vbox = QVBoxLayout(w)
-        vbox.setContentsMargins(40, 20, 40, 20)
-        vbox.setSpacing(15)
-
-        self.player_list = QListWidget()
-        self.player_list.setFixedHeight(250)
-        vbox.addWidget(self.player_list)
-
-        # Player-only button
-        self.btn_login_admin = QPushButton("Admin Login")
-        self.btn_login_admin.clicked.connect(self.login_admin)
-        vbox.addWidget(self.btn_login_admin)
-
-        self.header_label = QLabel("Select Player")
-        self.header_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.header_label.setStyleSheet("font-weight: bold; font-size: 22px;")
-        vbox.addWidget(self.header_label)
-
-        # --- action buttons ---
-        self.btn_logout = QPushButton("Logout")
-        self.btn_logout.clicked.connect(self.logout_admin)
-        vbox.addWidget(self.btn_logout)
-
-        self.btn_select = QPushButton("Select Player")
-        self.btn_select.clicked.connect(self.select_player_from_list)
-        vbox.addWidget(self.btn_select)
-
-        self.btn_create = QPushButton("Create New Account")
-        self.btn_create.clicked.connect(self.create_account)
-        vbox.addWidget(self.btn_create)
-
-        self.btn_delete = QPushButton("Remove Account")
-        self.btn_delete.clicked.connect(self.delete_player_from_list)
-        vbox.addWidget(self.btn_delete)
-
-        self.btn_view = QPushButton("View Leaderboard")
-        self.btn_view.clicked.connect(lambda: self.switch_to(self.leaderboard_screen))
-        vbox.addWidget(self.btn_view)
-
-        self.btn_export = QPushButton("Export CSV")
-        self.btn_export.clicked.connect(self.export_csv)
-        vbox.addWidget(self.btn_export)
-
-        # Minimal Import CSV (admin-only visibility toggled)
-        self.btn_import = QPushButton("Import CSV")
-        self.btn_import.clicked.connect(self.import_csv)
-        vbox.addWidget(self.btn_import)
-
-        return w
-    '''
-    #NEW 
-        # --------------------------
-    # GPIO (Magnets)
-    # --------------------------
-    MAGNET_PINS = [5, 6, 16, 17, 20, 21, 22, 23, 24, 25]  # BCM numbering
-
-    def init_gpio(self):
-        """Initialize GPIO and turn all magnets ON at app start."""
-        if not _GPIO_AVAILABLE:
-            print("[GPIO] Not available on this system. Running in UI-only mode.")
-            return
-        GPIO.setmode(GPIO.BCM)
-        for p in self.MAGNET_PINS:
-            GPIO.setup(p, GPIO.OUT, initial=GPIO.HIGH)
-        print("[GPIO] Initialized. All magnets ON.")
-
     def gpio_all_on(self):
-        if not _GPIO_AVAILABLE:
-            return
-        for p in self.MAGNET_PINS:
-            GPIO.output(p, GPIO.HIGH)
-        print("[GPIO] All magnets ON.")
+        if _IO_AVAILABLE:
+            io.io_all_on()
+            print("[GPIO] All magnets ON.")
 
     def gpio_all_off(self):
-        if not _GPIO_AVAILABLE:
-            return
-        for p in self.MAGNET_PINS:
-            GPIO.output(p, GPIO.LOW)
-        print("[GPIO] All magnets OFF.")
-
-    def gpio_cleanup(self):
-        if not _GPIO_AVAILABLE:
-            return
-        try:
-            self.gpio_all_off()
-        finally:
-            GPIO.cleanup()
-            print("[GPIO] Cleanup complete.")
+        if _IO_AVAILABLE:
+            io.io_all_off()
+            print("[GPIO] All magnets OFF.")
 
     # --------------------------
     # Flag drop sequence (random OFF until none remain)
     # --------------------------
     def start_flag_drop_sequence(self):
         """Begin random turn-off of pins during GO screen."""
-        # Ensure we start from all ON at GO
-        self.gpio_all_on()
-        self._remaining_pins = list(self.MAGNET_PINS)
+        self.gpio_all_on()  # ensure starting state
+        self._remaining_pins = list(io.OUTPUT_PINS) if _IO_AVAILABLE else []
         self._schedule_next_drop()
 
     def _schedule_next_drop(self):
-        """Schedule the next magnet drop within a random interval up to 2 seconds."""
         if not self._remaining_pins:
             # All off -> proceed to round screen
             self.switch_to(self.round_screen)
             return
-        interval_ms = int(random.uniform(400, 2000))  # within 2 seconds
+        interval_ms = int(random.uniform(400, 2000))  # 0.4 to 2.0 seconds
         QTimer.singleShot(interval_ms, self._turn_off_next_pin)
 
     def _turn_off_next_pin(self):
-        """Turn off a random remaining pin, then schedule the next."""
-        if self._remaining_pins and _GPIO_AVAILABLE:
+        if self._remaining_pins and _IO_AVAILABLE:
             pin = random.choice(self._remaining_pins)
-            GPIO.output(pin, GPIO.LOW)
+            io.io_pin_off(pin)
             self._remaining_pins.remove(pin)
             print(f"[GPIO] Magnet GPIO{pin} OFF. {len(self._remaining_pins)} remaining.")
         self._schedule_next_drop()
 
-
+    # --------------------------
+    # Screen Builders
+    # --------------------------
     def make_start_screen(self):
         w = QWidget()
-    
-        # Main vertical layout
         vbox = QVBoxLayout(w)
         vbox.setContentsMargins(40, 20, 40, 20)
         vbox.setSpacing(15)
 
-        # ---------------------------
-        # Header (still useful for admin/player modes)
-        # ---------------------------
         self.header_label = QLabel("Select Player")
         self.header_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.header_label.setStyleSheet("font-weight: bold; font-size: 22px; color: white;")
         vbox.addWidget(self.header_label)
 
-        # ---------------------------
-        # Player List (now larger)
-        # ---------------------------
         self.player_list = QListWidget()
         self.player_list.setStyleSheet("""
         QListWidget {
@@ -269,34 +174,20 @@ class FlagApp(QWidget):
             height: 40px;
         }
         """)
-
-        #self.player_list.setFixedHeight(250)  # ⬅️ Increased height for more visibility
         vbox.addWidget(self.player_list)
 
-        # ---------------------------
-        # Select Player Button (moved directly below list)
-        # ---------------------------
         self.btn_select = QPushButton("Select Player")
         self.btn_select.setMinimumHeight(50)
         self.btn_select.clicked.connect(self.select_player_from_list)
         vbox.addWidget(self.btn_select)
 
-        # ---------------------------
-        # Spacer pushes admin button to bottom
-        # ---------------------------
         vbox.addStretch()
 
-        # ---------------------------
-        # Admin Login at bottom of screen
-        # ---------------------------
         self.btn_login_admin = QPushButton("Admin Login")
         self.btn_login_admin.setMinimumHeight(40)
         self.btn_login_admin.clicked.connect(self.login_admin)
         vbox.addWidget(self.btn_login_admin)
 
-        # ---------------------------
-        # Hidden admin-only buttons (remain for admin mode)
-        # ---------------------------
         self.btn_create = QPushButton("Add New Player")
         self.btn_create.clicked.connect(self.create_account)
         vbox.addWidget(self.btn_create)
@@ -304,10 +195,6 @@ class FlagApp(QWidget):
         self.btn_delete = QPushButton("Remove Selected Player")
         self.btn_delete.clicked.connect(self.delete_player_from_list)
         vbox.addWidget(self.btn_delete)
-
-        #self.btn_view = QPushButton("View Leaderboard")
-        #self.btn_view.clicked.connect(lambda: self.switch_to(self.leaderboard_screen))
-        #vbox.addWidget(self.btn_view)
 
         self.btn_export = QPushButton("Export CSV")
         self.btn_export.clicked.connect(self.export_csv)
@@ -322,7 +209,6 @@ class FlagApp(QWidget):
         vbox.addWidget(self.btn_logout)
 
         return w
-
 
     def make_player_screen(self):
         w = QWidget()
@@ -337,7 +223,7 @@ class FlagApp(QWidget):
 
         vbox.addWidget(QLabel("Select Difficulty:", alignment=Qt.AlignmentFlag.AlignCenter))
 
-        for diff in ["Easy", "Medium", "Hard", "Very Hard"]:
+        for diff in ["Easy", "Medium", "Hard, " "Very Hard"]:
             btn = QPushButton(diff)
             btn.setMinimumHeight(50)
             btn.clicked.connect(lambda _, d=diff: self.choose_difficulty(d))
@@ -390,9 +276,6 @@ class FlagApp(QWidget):
         vbox.setContentsMargins(40, 20, 40, 20)
         vbox.setSpacing(5)
 
-        # -------- Navigation Buttons
-
-        # adding buttons to top to reduce error where tapping 7 flags also taps back button
         nav = QHBoxLayout()
         back_btn = QPushButton("Back to Players")
         back_btn.setMinimumHeight(40)
@@ -403,16 +286,13 @@ class FlagApp(QWidget):
         again_btn.setMinimumHeight(40)
         again_btn.clicked.connect(self.play_again)
         nav.addWidget(again_btn)
-
         vbox.addLayout(nav)
 
-        # -------- screen header below buttons
         header = QLabel("Leaderboard (Top 10)")
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header.setStyleSheet("font-weight: bold; font-size: 22px;")
         vbox.addWidget(header)
-        
-        # -------- leaderboard on bottom
+
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["Player", "Difficulty", "Flags"])
         self.table.setColumnWidth(0, 250)
@@ -427,7 +307,6 @@ class FlagApp(QWidget):
         self.btn_my_stats.setMinimumHeight(40)
         self.btn_my_stats.clicked.connect(self.show_player_stats)
         vbox.addWidget(self.btn_my_stats)
-
 
         return w
 
@@ -457,31 +336,27 @@ class FlagApp(QWidget):
         vbox.addWidget(self.go_label)
 
         return w
-    
+
     def make_stats_screen(self):
         w = QWidget()
         vbox = QVBoxLayout(w)
         vbox.setContentsMargins(40, 20, 40, 20)
         vbox.setSpacing(15)
 
-        # Header
         self.stats_header = QLabel("Player Stats")
         self.stats_header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.stats_header.setStyleSheet("font-weight: bold; font-size: 22px;")
         vbox.addWidget(self.stats_header)
 
-        # Matplotlib canvas
         self.stats_canvas = FigureCanvas(Figure(figsize=(8, 5)))
         vbox.addWidget(self.stats_canvas)
 
-        # Back button
         back_btn = QPushButton("Back to Leaderboard")
         back_btn.setMinimumHeight(40)
         back_btn.clicked.connect(lambda: self.switch_to(self.leaderboard_screen))
         vbox.addWidget(back_btn)
 
         return w
-
 
     # --------------------------
     # Helper Methods
@@ -528,6 +403,8 @@ class FlagApp(QWidget):
             self.selected_difficulty = None
             self.player_label.setText(f"Player: {self.current_player['name']}")
             self.difficulty_label.setText("Selected Mode: None")
+            # turn everything ON after a player is selected
+            self.gpio_all_on()
             self.switch_to(self.player_screen)
 
     def choose_difficulty(self, diff):
@@ -538,7 +415,6 @@ class FlagApp(QWidget):
         if not self.selected_difficulty:
             QMessageBox.warning(self, "No Mode", "Select a difficulty first.")
             return
-        #NEW
         # Ensure all magnets are ON at round start
         self.gpio_all_on()
 
@@ -550,11 +426,8 @@ class FlagApp(QWidget):
     def record_round(self, catches):
         if self.current_player and self.selected_difficulty is not None:
             db.record_session(self.current_player['id'], self.selected_difficulty, catches)
-            
-            #NEW
             # Clear all magnets after recording the round
             self.gpio_all_off()
-
             self.update_leaderboard()
             self.switch_to(self.leaderboard_screen)
 
@@ -577,15 +450,10 @@ class FlagApp(QWidget):
             QMessageBox.information(self, "No Data", "No sessions found for this player.")
             return
 
-        # Parse data
-        from datetime import datetime
         dates = [datetime.strptime(row[3], "%Y-%m-%d %H:%M:%S") for row in sessions]
         scores = [row[2] for row in sessions]
 
-        # Clear previous figure
         self.stats_canvas.figure.clear()
-
-        # Plot on the embedded canvas
         ax = self.stats_canvas.figure.add_subplot(111)
         ax.plot(dates, scores, marker='o', linestyle='-', color='blue')
         ax.set_title(f"{self.current_player['name']}'s Scores Over Time")
@@ -595,9 +463,7 @@ class FlagApp(QWidget):
         self.stats_canvas.figure.autofmt_xdate()
         self.stats_canvas.draw()
 
-        # Switch to stats screen
         self.switch_to(self.stats_screen)
-
 
     def delete_player_from_list(self):
         item = self.player_list.currentItem()
@@ -617,18 +483,14 @@ class FlagApp(QWidget):
                 self.load_players()
         self.switch_to(self.start_screen)
 
-    # slight issue, after first time clicking play_again, automatically tosses to player_screen. No way to play indefinitely
     def play_again(self):
         global selected_difficulty
         selected_difficulty = None
         self.difficulty_label.setText("Selected Mode: None")
-
-        #NEW
         # Ensure magnets are OFF before a new selection
         self.gpio_all_off()
-
         self.switch_to(self.player_screen)
-    
+
     def export_csv(self):
         local_path, onedrive_path = db.export_to_csv()
 
@@ -643,13 +505,10 @@ class FlagApp(QWidget):
         elif onedrive_path:
             message = f"✅ CSV successfully exported to OneDrive:\n\n☁️ {onedrive_path}"
         else:
-            message = "❌ CSV export failed — no files were created."
+            message = "❌ CSV export failed. No files were created."
 
         QMessageBox.information(self, "CSV Export", message)
 
-    # --------------------------
-    # Import CSV (names only)
-    # --------------------------
     def import_csv(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "Import CSV", "", "CSV Files (*.csv);;All Files (*)"
@@ -697,15 +556,12 @@ class FlagApp(QWidget):
         self.btn_select.hide()
         self.btn_create.show()
         self.btn_delete.show()
-        #self.btn_view.show()
         self.btn_export.show()
         self.btn_import.show()
         self.btn_logout.show()
 
-        # Toggle or change header
         self.header_label.setText("Admin Panel")
         self.header_label.setStyleSheet("font-weight: bold; font-size: 22px; color: orange;")
-
         self.player_list.setFixedHeight(250)
 
     def switch_to_player_mode(self):
@@ -713,26 +569,18 @@ class FlagApp(QWidget):
         self.btn_select.show()
         self.btn_create.hide()
         self.btn_delete.hide()
-        #self.btn_view.hide()
         self.btn_export.hide()
         self.btn_import.hide()
         self.btn_logout.hide()
 
-        # Toggle or change header
         self.header_label.setText("Select Player")
         self.header_label.setStyleSheet("font-weight: bold; font-size: 22px; color: white;")
-
         self.player_list.setFixedHeight(450)
 
     def update_countdown(self):
         self.countdown_value -= 1
         if self.countdown_value > 0:
             self.countdown_label.setText(f"Starting in {self.countdown_value}")
-        #else:
-        #    self.timer.stop()
-        #    self.switch_to(self.go_screen)
-        #    QTimer.singleShot(1000, lambda: self.switch_to(self.round_screen))
-        #NEW
         else:
             self.timer.stop()
             self.switch_to(self.go_screen)
@@ -754,37 +602,27 @@ class FlagApp(QWidget):
                     for btn in self.round_screen.findChildren(QPushButton):
                         local_pos = btn.mapFrom(self.round_screen, pos.toPoint())
                         if btn.rect().contains(local_pos):
-                            # Block re-firing the clicked signal by disabling first
                             btn.setEnabled(False)
                             self.record_round(int(btn.text()))
                             btn.setEnabled(True)
                             break
 
-
-# qdialog normal can't do more than 1 entry box, making a custom version that takes in name, pos as text and side as dropbox/combobox
+# qdialog normal cannot do more than one entry box, custom version below
 class PlayerInfoDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Enter Player Info")
 
-        # Widgets
         self.name_input = QLineEdit()
         self.position_input = QLineEdit()
         self.side_dropdown = QComboBox()
-        # O/D/S is what I got from Nayl, can easily switch to just O/D
         self.side_dropdown.addItems(["Offense", "Defense", "Special Teams"])
 
-        # Layout
         layout = QVBoxLayout()
-
-        # Name
         layout.addLayout(self._labeled_input("Name:", self.name_input))
-        # Position
         layout.addLayout(self._labeled_input("Position:", self.position_input))
-        # Side
         layout.addLayout(self._labeled_input("Side:", self.side_dropdown))
 
-        # Buttons
         btns = QHBoxLayout()
         ok_btn = QPushButton("OK")
         cancel_btn = QPushButton("Cancel")
@@ -804,7 +642,6 @@ class PlayerInfoDialog(QDialog):
         return layout
 
     def get_data(self):
-        # returning a dictionary we can parse out above
         return {
             "name": self.name_input.text().strip(),
             "position": self.position_input.text().strip(),
