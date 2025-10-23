@@ -3,6 +3,7 @@ import os
 import csv
 from datetime import datetime
 from pathlib import Path
+import subprocess
 
 import tkinter as tk
 from tkinter import filedialog
@@ -206,6 +207,10 @@ def export_to_csv():
         except Exception:
             onedrive_file = None  # In case of error writing
 
+    try:
+        subprocess.run(["onedrive", "--sync"], check=False)
+    except Exception:
+        pass  #
     return local_file, onedrive_file
 
 
