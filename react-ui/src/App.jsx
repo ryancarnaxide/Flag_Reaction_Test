@@ -1,4 +1,3 @@
-// src/App.jsx — show balanced Score on the leaderboard (UI otherwise unchanged)
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import {
@@ -8,7 +7,7 @@ import {
   exportCSVSimple,
   importCSVSimple,
   getLeaderboard,
-  addSession,
+  addSession, // <-- save sessions
 } from "./api";
 
 function Screen({ view, children }) {
@@ -26,7 +25,12 @@ export default function App() {
   // Shared state
   const [players, setPlayers] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+
+  // Admin: create player fields
   const [newName, setNewName] = useState("");
+  const [newPosition, setNewPosition] = useState("");
+  const [newSide, setNewSide] = useState("");
+
   const [msg, setMsg] = useState("");
 
   // Difficulty and catch count (capture)
@@ -61,11 +65,18 @@ export default function App() {
   // -------- admin handlers --------
   async function handleCreate() {
     const name = newName.trim();
-    if (!name) return setMsg("Enter a player name first.");
+    const position = newPosition.trim();
+    const side = newSide.trim();
+    if (!name) return setMsg("Please enter a player name.");
+    if (!position) return setMsg("Please enter the player's position.");
+    if (!side) return setMsg("Please select a side (Offense/Defense/Special Teams).");
+
     try {
-      await createPlayer(name);
+      await createPlayer(name, position, side);
       setMsg(`Created player: ${name}`);
       setNewName("");
+      setNewPosition("");
+      setNewSide("");
       await refreshPlayers();
     } catch (e) {
       setMsg(`Create failed: ${e.message}`);
@@ -147,7 +158,7 @@ export default function App() {
   // -------- screens --------
   return (
     <div className="page">
-      {/* TOP-LEFT LOGO (non-interactive, large) */}
+      {/* TOP-LEFT LOGO (non-interactive) */}
       <div className="brand brand-static" aria-hidden="true">
         <img src="/psu-logo.png" alt="Penn State logo" />
       </div>
@@ -365,11 +376,17 @@ export default function App() {
                       );
                       return;
                     }
+                    if (!difficulty) {
+                      setMsg("Please select a difficulty first.");
+                      return;
+                    }
+                    // SAVE the session
                     await addSession({
                       player_id: selectedId,
                       difficulty,
                       catches,
                     });
+                    // Then fetch leaderboard
                     const data = await getLeaderboard(10);
                     setBoard(data);
                     setView("leaderboard");
@@ -416,7 +433,7 @@ export default function App() {
                         <td>{row.difficulty}</td>
                         <td>{row.catches}</td>
                         <td>{row.score}</td>
-                        <td>{new Date(row.played_at).toLocaleString()}</td>
+                        <td>{row.played_at ? new Date(row.played_at).toLocaleString() : ""}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -458,14 +475,29 @@ export default function App() {
 
             <section className="section">
               <h3>Create Player</h3>
-              <div className="row">
+              <div className="row" style={{ flexWrap: "wrap", gap: "8px" }}>
                 <input
                   className="input"
-                  placeholder="Enter player name"
+                  placeholder="Name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleCreate()}
                 />
+                <input
+                  className="input"
+                  placeholder="Position"
+                  value={newPosition}
+                  onChange={(e) => setNewPosition(e.target.value)}
+                />
+                <select
+                  className="input"
+                  value={newSide}
+                  onChange={(e) => setNewSide(e.target.value)}
+                >
+                  <option value="">Select Side</option>
+                  <option value="Offense">Offense</option>
+                  <option value="Defense">Defense</option>
+                  <option value="Special Teams">Special Teams</option>
+                </select>
                 <button className="btn small" onClick={handleCreate}>
                   Create
                 </button>
