@@ -69,7 +69,8 @@ export default function App() {
     const side = newSide.trim();
     if (!name) return setMsg("Please enter a player name.");
     if (!position) return setMsg("Please enter the player's position.");
-    if (!side) return setMsg("Please select a side (Offense/Defense/Special Teams).");
+    if (!side)
+      return setMsg("Please select a side (Offense/Defense/Special Teams).");
 
     try {
       await createPlayer(name, position, side);
@@ -433,7 +434,11 @@ export default function App() {
                         <td>{row.difficulty}</td>
                         <td>{row.catches}</td>
                         <td>{row.score}</td>
-                        <td>{row.played_at ? new Date(row.played_at).toLocaleString() : ""}</td>
+                        <td>
+                          {row.played_at
+                            ? new Date(row.played_at).toLocaleString()
+                            : ""}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
