@@ -98,6 +98,15 @@ class FlagApp(QWidget):
         self.selected_difficulty = None
         self.admin_password = 'dan5171'
 
+        # difficulty settings: delay range in milliseconds
+        # adjust after testing with pcb
+        self.difficulty_settings = {
+            "Easy": {"min_ms": 1200, "max_ms": 1200},
+            "Medium": {"min_ms": 800,  "max_ms": 1800},
+            "Hard": {"min_ms": 500,  "max_ms": 1200},
+            "Very Hard": {"min_ms": 250,  "max_ms": 800}
+        }
+
         self.load_players()
         self.update_leaderboard()
         self.switch_to(self.start_screen)
@@ -124,6 +133,8 @@ class FlagApp(QWidget):
             io.io_all_off()
             print("[GPIO] All magnets OFF.")
 
+
+    '''
     # --------------------------
     # Flag drop sequence (random OFF until none remain)
     # --------------------------
@@ -148,6 +159,44 @@ class FlagApp(QWidget):
             self._remaining_pins.remove(pin)
             print(f"[GPIO] Magnet GPIO{pin} OFF. {len(self._remaining_pins)} remaining.")
         self._schedule_next_drop()
+    '''
+
+    def start_flag_drop_sequence(self):
+        """Begin random turn-off of pins during GO screen."""
+        self.gpio_all_on()  # all pins on at start
+        self._remaining_pins = list(io.OUTPUT_PINS) if _IO_AVAILABLE else list(range(10))
+        self._schedule_next_drop()
+
+    def _schedule_next_drop(self):
+        """Schedule the next flag drop according to selected difficulty."""
+        if not self._remaining_pins:
+            # all pins off -> go to round screen
+            self.switch_to(self.round_screen)
+            return
+
+        settings = self.difficulty_settings.get(self.selected_difficulty, {})
+        min_ms = settings.get("min_ms", 500)
+        max_ms = settings.get("max_ms", 1500)
+        interval_ms = int(random.uniform(min_ms, max_ms))
+
+        QTimer.singleShot(interval_ms, self._turn_off_next_pin)
+
+    def _turn_off_next_pin(self):
+        """Turn off one random pin each tick."""
+        if not self._remaining_pins:
+            self.switch_to(self.round_screen)
+            return
+
+        pin = random.choice(self._remaining_pins)
+        if _IO_AVAILABLE:
+            io.io_pin_off(pin)
+            print(f"[GPIO] Magnet GPIO{pin} OFF. {len(self._remaining_pins)-1} remaining.")
+        else:
+            print(f"[SIM] Would turn off pin {pin}.")
+        self._remaining_pins.remove(pin)
+
+        self._schedule_next_drop()
+
 
     # --------------------------
     # Screen Builders
@@ -422,6 +471,7 @@ class FlagApp(QWidget):
         self.countdown_label.setText(f"Starting in {self.countdown_value}")
         self.switch_to(self.countdown_screen)
         self.timer.start(1000)
+    
 
     def record_round(self, catches):
         if self.current_player and self.selected_difficulty is not None:
