@@ -104,7 +104,7 @@ class FlagApp(QWidget):
             "Easy": {"min_ms": 1200, "max_ms": 1200},
             "Medium": {"min_ms": 800,  "max_ms": 1800},
             "Hard": {"min_ms": 500,  "max_ms": 1200},
-            "Very Hard": {"min_ms": 250,  "max_ms": 800}
+            "Very Hard": {"min_ms": 250,  "max_ms": 500}
         }
 
         self.load_players()
@@ -272,7 +272,7 @@ class FlagApp(QWidget):
 
         vbox.addWidget(QLabel("Select Difficulty:", alignment=Qt.AlignmentFlag.AlignCenter))
 
-        for diff in ["Easy", "Medium", "Hard, " "Very Hard"]:
+        for diff in ["Easy", "Medium", "Hard", "Very Hard"]:
             btn = QPushButton(diff)
             btn.setMinimumHeight(50)
             btn.clicked.connect(lambda _, d=diff: self.choose_difficulty(d))
