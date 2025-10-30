@@ -21,7 +21,8 @@ try:
     _IO_AVAILABLE = True
 except Exception:
     _IO_AVAILABLE = False
-
+from gpiozero import LED
+from time import sleep
 # ==============================
 # Initialize Database
 # ==============================
@@ -94,6 +95,10 @@ class FlagApp(QWidget):
         self.stack.addWidget(self.stats_screen)
 
         # global values
+        self.mag = LED(5)
+        self.mag2 = LED(6)
+        self.mag.on()
+        self.mag2.on()
         self.current_player = None
         self.selected_difficulty = None
         self.admin_password = 'dan5171'
@@ -635,7 +640,12 @@ class FlagApp(QWidget):
             self.timer.stop()
             self.switch_to(self.go_screen)
             # Begin random OFF sequence until all magnets are off, then move to round screen
-            self.start_flag_drop_sequence()
+            #self.start_flag_drop_sequence()
+            sleep(1)
+            self.mag.off()
+            sleep(1)
+            self.mag2.off()
+
 
     def event(self, e):
         if e.type() in (QEvent.Type.TouchBegin, QEvent.Type.TouchUpdate, QEvent.Type.TouchEnd):
