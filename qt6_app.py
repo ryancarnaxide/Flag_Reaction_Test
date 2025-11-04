@@ -14,6 +14,8 @@ from datetime import datetime
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+from gpiozero import LED
+import time
 
 # ==============================
 # Initialize Database
@@ -601,6 +603,27 @@ class FlagApp(QWidget):
             # After 1 second, move to the "How many flags?" screen
             QTimer.singleShot(1000, lambda: self.switch_to(self.round_screen))
 
+            mag1= LED(5)
+            mag1.on()
+            mag2=LED(6)
+            mag2.on()
+
+            if(self.selected_difficulty == "Easy"):
+                mag1.off()
+                time.sleep(3)
+                mag2.off()
+            elif(self.selected_difficulty == "Medium"):
+                mag1.off()
+                time.sleep(2)
+                mag2.off()
+            elif(self.selected_difficulty == "Hard"):
+                mag1.off()
+                time.sleep(1)
+                mag2.off()
+            elif(self.selected_difficulty == "Very Hard"):
+                mag1.off()
+                time.sleep(0.5)
+                mag2.off()
 
     def event(self, e):
         if e.type() in (QEvent.Type.TouchBegin, QEvent.Type.TouchUpdate, QEvent.Type.TouchEnd):
