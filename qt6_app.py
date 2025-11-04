@@ -14,15 +14,7 @@ from datetime import datetime
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-# GPIO control via our helper module
-import random
-try:
-    import io_control as io  # uses RPi.GPIO under the hood
-    _IO_AVAILABLE = True
-except Exception:
-    _IO_AVAILABLE = False
-from gpiozero import LED
-from time import sleep
+
 # ==============================
 # Initialize Database
 # ==============================
@@ -95,10 +87,6 @@ class FlagApp(QWidget):
         self.stack.addWidget(self.stats_screen)
 
         # global values
-        self.mag = LED(5)
-        self.mag2 = LED(6)
-        self.mag.on()
-        self.mag2.on()
         self.current_player = None
         self.selected_difficulty = None
         self.admin_password = 'dan5171'
@@ -117,26 +105,6 @@ class FlagApp(QWidget):
         self.switch_to(self.start_screen)
         self.switch_to_player_mode()
 
-        # GPIO init and cleanup hook
-        if _IO_AVAILABLE:
-            io.io_setup()
-            QApplication.instance().aboutToQuit.connect(io.io_cleanup)
-
-        # used during GO sequence
-        self._remaining_pins = []
-
-    # --------------------------
-    # GPIO wrapper methods
-    # --------------------------
-    def gpio_all_on(self):
-        if _IO_AVAILABLE:
-            io.io_all_on()
-            print("[GPIO] All magnets ON.")
-
-    def gpio_all_off(self):
-        if _IO_AVAILABLE:
-            io.io_all_off()
-            print("[GPIO] All magnets OFF.")
 
 
     '''
@@ -168,10 +136,9 @@ class FlagApp(QWidget):
 
     def start_flag_drop_sequence(self):
         """Begin random turn-off of pins during GO screen."""
-        self.gpio_all_on()  # all pins on at start
-        self._remaining_pins = list(io.OUTPUT_PINS) if _IO_AVAILABLE else list(range(10))
         self._schedule_next_drop()
 
+    '''
     def _schedule_next_drop(self):
         """Schedule the next flag drop according to selected difficulty."""
         if not self._remaining_pins:
@@ -201,7 +168,7 @@ class FlagApp(QWidget):
         self._remaining_pins.remove(pin)
 
         self._schedule_next_drop()
-
+    '''
 
     # --------------------------
     # Screen Builders
@@ -457,8 +424,6 @@ class FlagApp(QWidget):
             self.selected_difficulty = None
             self.player_label.setText(f"Player: {self.current_player['name']}")
             self.difficulty_label.setText("Selected Mode: None")
-            # turn everything ON after a player is selected
-            self.gpio_all_on()
             self.switch_to(self.player_screen)
 
     def choose_difficulty(self, diff):
@@ -469,8 +434,6 @@ class FlagApp(QWidget):
         if not self.selected_difficulty:
             QMessageBox.warning(self, "No Mode", "Select a difficulty first.")
             return
-        # Ensure all magnets are ON at round start
-        self.gpio_all_on()
 
         self.countdown_value = 5  # Reset countdown
         self.countdown_label.setText(f"Starting in {self.countdown_value}")
@@ -481,8 +444,6 @@ class FlagApp(QWidget):
     def record_round(self, catches):
         if self.current_player and self.selected_difficulty is not None:
             db.record_session(self.current_player['id'], self.selected_difficulty, catches)
-            # Clear all magnets after recording the round
-            self.gpio_all_off()
             self.update_leaderboard()
             self.switch_to(self.leaderboard_screen)
 
@@ -542,8 +503,6 @@ class FlagApp(QWidget):
         global selected_difficulty
         selected_difficulty = None
         self.difficulty_label.setText("Selected Mode: None")
-        # Ensure magnets are OFF before a new selection
-        self.gpio_all_off()
         self.switch_to(self.player_screen)
 
     def export_csv(self):
@@ -639,12 +598,8 @@ class FlagApp(QWidget):
         else:
             self.timer.stop()
             self.switch_to(self.go_screen)
-            # Begin random OFF sequence until all magnets are off, then move to round screen
-            #self.start_flag_drop_sequence()
-            sleep(1)
-            self.mag.off()
-            sleep(1)
-            self.mag2.off()
+            # After 1 second, move to the "How many flags?" screen
+            QTimer.singleShot(1000, lambda: self.switch_to(self.round_screen))
 
 
     def event(self, e):
