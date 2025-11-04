@@ -4,9 +4,6 @@ import csv
 from datetime import datetime
 from pathlib import Path
 
-import tkinter as tk
-from tkinter import filedialog
-
 DB_FILE = "flag_reaction_test.db"
 
 # ---------------------------

@@ -1,0 +1,19 @@
+# frontend/Dockerfile.frontend
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY react-ui/package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source code
+COPY react-ui/ ./
+
+# Expose Vite's default port
+EXPOSE 5173
+
+# Run Vite dev server
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

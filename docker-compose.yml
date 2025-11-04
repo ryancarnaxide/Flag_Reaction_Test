@@ -1,0 +1,38 @@
+# docker-compose.yml
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.backend
+    container_name: uvicorn-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    container_name: react-frontend
+    ports:
+      - "5173:5173" # Changed from 5173:80
+    volumes:
+      - ./frontend/react-ui:/app # Enable hot reload
+      - /app/node_modules # Prevent overwriting node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
