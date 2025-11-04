@@ -50,7 +50,10 @@ QScrollBar::sub-line:vertical {
     height: 0;
 }
 """
-
+mag1 = LED(5)
+mag1.on()
+mag2 = LED(6)
+mag2.on()
 # ==============================
 # Main Application
 # ==============================
@@ -594,6 +597,8 @@ class FlagApp(QWidget):
         self.player_list.setFixedHeight(450)
 
     def update_countdown(self):
+        global mag1
+        global mag2
         self.countdown_value -= 1
         if self.countdown_value > 0:
             self.countdown_label.setText(f"Starting in {self.countdown_value}")
@@ -602,12 +607,13 @@ class FlagApp(QWidget):
             self.switch_to(self.go_screen)
             # After 1 second, move to the "How many flags?" screen
             QTimer.singleShot(1000, lambda: self.switch_to(self.round_screen))
-
+            '''
             mag1= LED(5)
             mag1.on()
             mag2=LED(6)
             mag2.on()
-
+            time.sleep(2)
+            '''
             if(self.selected_difficulty == "Easy"):
                 mag1.off()
                 time.sleep(3)
