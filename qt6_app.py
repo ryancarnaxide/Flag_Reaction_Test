@@ -50,10 +50,27 @@ QScrollBar::sub-line:vertical {
     height: 0;
 }
 """
+# OUTPUT_PINS = [5, 6, 16, 17, 20, 21, 22, 23, 24, 25]
 mag1 = LED(5)
 mag1.on()
 mag2 = LED(6)
 mag2.on()
+mag3 = LED(16)
+mag3.on()
+mag4 = LED(17)
+mag4.on()
+mag5 = LED(20)
+mag5.on()
+mag6 = LED(21)
+mag6.on()
+mag7 = LED(22)
+mag7.on()
+mag8 = LED(23)
+mag8.on()
+mag9 = LED(24)
+mag9.on()
+mag10 = LED(25)
+mag10.on()
 # ==============================
 # Main Application
 # ==============================
@@ -599,6 +616,14 @@ class FlagApp(QWidget):
     def update_countdown(self):
         global mag1
         global mag2
+        global mag3
+        global mag4
+        global mag5
+        global mag6
+        global mag7
+        global mag8
+        global mag9
+        global mag10
         self.countdown_value -= 1
         if self.countdown_value > 0:
             self.countdown_label.setText(f"Starting in {self.countdown_value}")
@@ -618,18 +643,82 @@ class FlagApp(QWidget):
                 mag1.off()
                 time.sleep(3)
                 mag2.off()
+                time.sleep(3)
+                mag3.off()
+                time.sleep(3)
+                mag4.off()
+                time.sleep(3)
+                mag5.off()
+                time.sleep(3)
+                mag6.off()
+                time.sleep(3)
+                mag7.off()
+                time.sleep(3)
+                mag8.off()
+                time.sleep(3)
+                mag9.off()
+                time.sleep(3)
+                mag10.off()
             elif(self.selected_difficulty == "Medium"):
                 mag1.off()
                 time.sleep(2)
                 mag2.off()
+                time.sleep(2)
+                mag3.off()
+                time.sleep(2)
+                mag4.off()
+                time.sleep(2)
+                mag5.off()
+                time.sleep(2)
+                mag6.off()
+                time.sleep(2)
+                mag7.off()
+                time.sleep(2)
+                mag8.off()
+                time.sleep(2)
+                mag9.off()
+                time.sleep(2)
+                mag10.off()
             elif(self.selected_difficulty == "Hard"):
                 mag1.off()
                 time.sleep(1)
                 mag2.off()
+                time.sleep(1)
+                mag3.off()
+                time.sleep(1)
+                mag4.off()
+                time.sleep(1)
+                mag5.off()
+                time.sleep(1)
+                mag6.off()
+                time.sleep(1)
+                mag7.off()
+                time.sleep(1)
+                mag8.off()
+                time.sleep(1)
+                mag9.off()
+                time.sleep(1)
+                mag10.off()
             elif(self.selected_difficulty == "Very Hard"):
                 mag1.off()
                 time.sleep(0.5)
                 mag2.off()
+                time.sleep(0.5)
+                mag3.off()
+                time.sleep(0.5)
+                mag4.off()
+                time.sleep(0.5)
+                mag5.off()
+                time.sleep(0.5)
+                mag6.off()
+                time.sleep(0.5)
+                mag7.off()
+                time.sleep(0.5)
+                mag8.off()
+                time.sleep(0.5)
+                mag9.off()
+                time.sleep(0.5)
+                mag10.off()
 
     def event(self, e):
         if e.type() in (QEvent.Type.TouchBegin, QEvent.Type.TouchUpdate, QEvent.Type.TouchEnd):
