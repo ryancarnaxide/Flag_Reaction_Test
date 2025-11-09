@@ -66,3 +66,34 @@ export async function importCSVSimple(file) {
 export async function getLeaderboard(topN = 10) {
   return j(await fetch(`${BASE}/leaderboard?top_n=${topN}`));
 }
+
+// ---------- Hardware Control ----------
+export async function getHardwareStatus() {
+  return j(await fetch(`${BASE}/hardware/status`));
+}
+
+export async function turnMagnetsOn() {
+  return j(
+    await fetch(`${BASE}/hardware/magnets/on`, {
+      method: "POST",
+    })
+  );
+}
+
+export async function turnMagnetsOff() {
+  return j(
+    await fetch(`${BASE}/hardware/magnets/off`, {
+      method: "POST",
+    })
+  );
+}
+
+export async function startDropSequence(difficulty) {
+  return j(
+    await fetch(`${BASE}/hardware/drop`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ difficulty }),
+    })
+  );
+}

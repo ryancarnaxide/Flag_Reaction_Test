@@ -8,6 +8,10 @@ import {
   importCSVSimple,
   getLeaderboard,
   addSession,
+  getHardwareStatus,
+  turnMagnetsOn,
+  turnMagnetsOff,
+  startDropSequence,
 } from "./api";
 
 // Reusable Screen wrapper with animation
@@ -55,6 +59,9 @@ export default function App() {
     const saved = localStorage.getItem("useReactionGame");
     return saved === "true";
   });
+  
+  // Hardware status
+  const [hardwareAvailable, setHardwareAvailable] = useState(false);
   
   // Notification state
   const [msg, setMsg] = useState("");
@@ -123,6 +130,22 @@ export default function App() {
       refreshPlayers();
     }
   }, [view]);
+
+  // Check hardware status on mount
+  useEffect(() => {
+    async function checkHardware() {
+      try {
+        const status = await getHardwareStatus();
+        setHardwareAvailable(status.available);
+        if (status.available) {
+          showMessage("✓ Hardware connected");
+        }
+      } catch (error) {
+        console.log("Hardware not available:", error);
+      }
+    }
+    checkHardware();
+  }, []);
 
   // Handle player creation
   async function handleCreatePlayer() {
@@ -249,18 +272,27 @@ export default function App() {
   useEffect(() => {
     if (view !== "flash") return;
     
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       if (useReactionGame) {
-        // New mode: go to reaction game
+        // New mode: go to reaction game (software circles)
         setView("ready");
       } else {
-        // Old mode: go directly to capture screen
+        // Old mode: trigger hardware drop sequence
+        if (hardwareAvailable) {
+          try {
+            await startDropSequence(difficulty);
+            showMessage("🔧 Hardware sequence started");
+          } catch (error) {
+            showMessage("Hardware error: " + error.message);
+          }
+        }
+        // Go to capture screen after flash
         setView("capture");
       }
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [view, useReactionGame]);
+  }, [view, useReactionGame, hardwareAvailable, difficulty]);
 
   // Start spawning circles when ready view loads
   useEffect(() => {
@@ -771,7 +803,7 @@ export default function App() {
                   <p className="muted" style={{ margin: 0, fontSize: '14px' }}>
                     {useReactionGame 
                       ? "Players will click circles that appear on screen after countdown"
-                      : "Players will directly enter their score after countdown"}
+                      : "Players will directly enter their score after countdown (with hardware control)"}
                   </p>
                 </div>
                 <label className="toggle-switch">
@@ -789,9 +821,69 @@ export default function App() {
                 fontWeight: '600',
                 marginTop: '8px'
               }}>
-                {useReactionGame ? "✓ Reaction Game ON" : "○ Reaction Game OFF"}
+                {useReactionGame ? "✓ Reaction Game ON" : "○ Reaction Game OFF (Hardware Mode)"}
               </div>
             </section>
+
+            {/* Hardware Control Section */}
+            {hardwareAvailable && (
+              <section className="section" style={{ 
+                background: 'rgba(255, 149, 0, 0.08)', 
+                border: '1px solid rgba(255, 149, 0, 0.2)',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '24px'
+              }}>
+                <h3 className="section-title" style={{ margin: 0, marginBottom: '12px' }}>
+                  🔧 Hardware Controls
+                </h3>
+                <p className="muted" style={{ margin: 0, fontSize: '14px', marginBottom: '16px' }}>
+                  Control the electromagnets directly for testing
+                </p>
+                <div className="row" style={{ gap: '12px' }}>
+                  <button
+                    className="btn small"
+                    onClick={async () => {
+                      try {
+                        await turnMagnetsOn();
+                        showMessage("✓ All magnets ON");
+                      } catch (error) {
+                        showMessage("Error: " + error.message);
+                      }
+                    }}
+                    style={{ background: '#17c964', borderColor: '#17c964', color: '#fff' }}
+                  >
+                    ⚡ All Magnets ON
+                  </button>
+                  <button
+                    className="btn small danger"
+                    onClick={async () => {
+                      try {
+                        await turnMagnetsOff();
+                        showMessage("✓ All magnets OFF");
+                      } catch (error) {
+                        showMessage("Error: " + error.message);
+                      }
+                    }}
+                  >
+                    🔴 All Magnets OFF
+                  </button>
+                  <button
+                    className="btn small ghost"
+                    onClick={async () => {
+                      try {
+                        await startDropSequence("Medium");
+                        showMessage("✓ Test sequence started (Medium)");
+                      } catch (error) {
+                        showMessage("Error: " + error.message);
+                      }
+                    }}
+                  >
+                    🧪 Test Drop Sequence
+                  </button>
+                </div>
+              </section>
+            )}
 
             {/* Create Player Section */}
             <section className="section">
