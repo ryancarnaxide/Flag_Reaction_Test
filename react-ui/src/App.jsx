@@ -14,6 +14,41 @@ import {
   startDropSequence,
 } from "./api";
 
+// Background Slideshow Component (Simple & Consistent)
+function BackgroundSlideshow() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const images = [
+    '/bg1.jpg',
+    '/bg2.jpg',
+    '/bg3.jpg',
+    '/bg4.jpg',
+    '/bg5.jpg',
+    '/bg6.jpg',
+    '/bg7.jpg',
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 6000); // Change image every 6 seconds
+
+    return () => clearInterval(interval);
+  }, [images.length]);
+
+  return (
+    <div className="background-slideshow">
+      {images.map((src, index) => (
+        <div
+          key={index}
+          className={`slideshow-image ${index === currentIndex ? 'active' : ''}`}
+          style={{ backgroundImage: `url(${src})` }}
+        />
+      ))}
+      <div className="slideshow-overlay" />
+    </div>
+  );
+}
+
 // Reusable Screen wrapper with animation
 function Screen({ view, children }) {
   return (
@@ -393,6 +428,9 @@ export default function App() {
 
   return (
     <div className="page">
+      {/* Background Slideshow */}
+      <BackgroundSlideshow />
+      
       {/* Penn State Logo */}
       <div className="brand brand-static" aria-hidden="true">
         <img src="/psu-logo.png" alt="Penn State" />
@@ -405,6 +443,7 @@ export default function App() {
       {view === "home" && (
         <Screen view={view}>
           <div className="home">
+            <p className="home-header">Penn State Athletics</p>
             <h1 className="title">Flag Reaction Test</h1>
             <p className="subtitle">Select an option to begin</p>
 

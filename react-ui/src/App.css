@@ -41,17 +41,59 @@
    BASE LAYOUT
    ======================================== */
 .page {
-  min-height: 100dvh;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 100%);
+  background: var(--navy-dark);
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   padding: var(--spacing-md);
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+/* ========================================
+   BACKGROUND SLIDESHOW (Simple & Consistent)
+   ======================================== */
+.background-slideshow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.slideshow-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 2s ease-in-out;
+}
+
+.slideshow-image.active {
+  opacity: 1;
+}
+
+/* Navy blue tint overlay */
+.slideshow-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 25, 58, 0.82);
+  z-index: 1;
+  pointer-events: none;
 }
 
 /* Screen container with smooth transitions */
@@ -61,6 +103,8 @@
   align-items: center;
   justify-content: center;
   padding: 80px 12px 20px; /* Extra top padding to avoid logo */
+  position: relative;
+  z-index: 10;
 }
 
 .animate-in {
@@ -169,9 +213,57 @@
   width: 100%;
 }
 
+.home-header {
+  margin: 0 0 -12px 0;
+  font-size: clamp(14px, 2vw, 16px);
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  position: relative;
+  padding-bottom: 8px;
+}
+
+.home-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(157, 184, 217, 0.6) 20%, 
+    rgba(234, 241, 255, 0.8) 50%, 
+    rgba(157, 184, 217, 0.6) 80%, 
+    transparent 100%
+  );
+  box-shadow: 
+    0 0 8px rgba(234, 241, 255, 0.6),
+    0 0 16px rgba(157, 184, 217, 0.4);
+  animation: underlineGlow 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes underlineGlow {
+  0% {
+    opacity: 0.6;
+    box-shadow: 
+      0 0 8px rgba(234, 241, 255, 0.4),
+      0 0 12px rgba(157, 184, 217, 0.3);
+  }
+  100% {
+    opacity: 1;
+    box-shadow: 
+      0 0 12px rgba(234, 241, 255, 0.8),
+      0 0 20px rgba(157, 184, 217, 0.5);
+  }
+}
+
 .title {
   margin: 0;
-  font-size: clamp(28px, 5vw, 38px);
+  font-size: clamp(32px, 5.5vw, 42px);
   font-weight: 800;
   letter-spacing: -0.02em;
   text-align: center;
@@ -179,7 +271,19 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  line-height: 1.1;
+  line-height: 1.2;
+  text-shadow: 0 0 40px rgba(234, 241, 255, 0.4);
+  filter: drop-shadow(0 0 30px rgba(234, 241, 255, 0.5));
+  animation: glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  0% {
+    filter: drop-shadow(0 0 20px rgba(234, 241, 255, 0.4));
+  }
+  100% {
+    filter: drop-shadow(0 0 40px rgba(234, 241, 255, 0.7));
+  }
 }
 
 .subtitle {
