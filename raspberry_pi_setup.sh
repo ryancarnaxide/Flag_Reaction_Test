@@ -3,7 +3,7 @@
 
 # make sure apt is up to date
 sudo apt update
-sudo apt upgrade -y
+# sudo apt upgrade -y
 
 # docker prerequisites
 sudo apt install -y ca-certificates curl gnupg
@@ -38,5 +38,5 @@ cd Flag_Reaction_Test
 sudo apt install -y docker-compose-plugin
 sudo docker compose up -d
 
-# run application with firefox
-firefox http://localhost:5173
+# run application in fullscreen with chromium
+chromium --kiosk http://localhost:5173
