@@ -9,7 +9,9 @@ from fastapi.responses import StreamingResponse
 import database_setup as db
 from database_setup import get_connection
 
-
+import threading
+import time
+from random import shuffle
 # ---------------------------
 # App Initialization
 # ---------------------------
@@ -218,3 +220,119 @@ async def import_simple(file: UploadFile = File(...)):
             imported += 1
 
     return {"imported": imported, "skipped": skipped, "errors": errors}
+
+try:
+    from gpiozero import LED
+    PINS = [5, 6, 16, 17, 20, 21, 22, 23, 24, 25]
+    magnets = [LED(pin) for pin in PINS]
+    GPIO_AVAILABLE = True
+    print("[HARDWARE] GPIO initialized successfully")
+except Exception as e:
+    GPIO_AVAILABLE = False
+    magnets = []
+    print(f"[HARDWARE] GPIO not available: {e}")
+
+
+# ==============================
+# Hardware Control Functions
+# ==============================
+
+def magnets_all_on():
+    """Turn ON all electromagnets"""
+    if not GPIO_AVAILABLE:
+        print("[HARDWARE] Simulated: All magnets ON")
+        return
+    for m in magnets:
+        m.on()
+    print("[HARDWARE] All magnets ON")
+
+
+def magnets_all_off():
+    """Turn OFF all electromagnets"""
+    if not GPIO_AVAILABLE:
+        print("[HARDWARE] Simulated: All magnets OFF")
+        return
+    for m in magnets:
+        m.off()
+    print("[HARDWARE] All magnets OFF")
+
+
+def drop_sequence(difficulty="Medium"):
+    """
+    Drop magnets in sequence based on difficulty.
+    Runs in background thread.
+    """
+    drop_delays = {
+        "Easy": 3.0,
+        "Medium": 2.0,
+        "Hard": 1.0,
+        "Very Hard": 0.5
+    }
+    delay = drop_delays.get(difficulty, 2.0)
+
+    def sequence():
+        if not GPIO_AVAILABLE:
+            print(f"[HARDWARE] Simulated drop sequence: {difficulty}, {delay}s between drops")
+            return
+        
+        # Turn all on first
+        magnets_all_on()
+        time.sleep(0.5)  # Brief hold
+        
+        # Drop them sequentially
+        for i, magnet in enumerate(magnets, 1):
+            time.sleep(delay)
+            magnet.off()
+            print(f"[HARDWARE] Magnet {i}/10 dropped")
+        
+        print(f"[HARDWARE] All magnets dropped ({difficulty})")
+
+    # Run in background thread
+    threading.Thread(target=sequence, daemon=True).start()
+
+
+# ==============================
+# API Endpoints
+# ==============================
+
+@app.get("/hardware/status")
+def hardware_status():
+    """Check if GPIO hardware is available"""
+    return {
+        "available": GPIO_AVAILABLE,
+        "pins": PINS if GPIO_AVAILABLE else []
+    }
+
+
+@app.post("/hardware/magnets/on")
+def turn_magnets_on():
+    """Turn all magnets ON"""
+    magnets_all_on()
+    return {"ok": True, "status": "on"}
+
+
+@app.post("/hardware/magnets/off")
+def turn_magnets_off():
+    """Turn all magnets OFF"""
+    magnets_all_off()
+    return {"ok": True, "status": "off"}
+
+
+@app.post("/hardware/drop")
+def hardware_drop_sequence(payload: dict):
+    """
+    Start the drop sequence
+    Payload: { "difficulty": "Easy" | "Medium" | "Hard" | "Very Hard" }
+    """
+    difficulty = payload.get("difficulty", "Medium")
+    
+    if difficulty not in ["Easy", "Medium", "Hard", "Very Hard"]:
+        raise HTTPException(400, "Invalid difficulty")
+    
+    drop_sequence(difficulty)
+    
+    return {
+        "ok": True,
+        "difficulty": difficulty,
+        "message": "Drop sequence started"
+    }
