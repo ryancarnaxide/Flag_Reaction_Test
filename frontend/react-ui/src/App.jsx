@@ -18,13 +18,13 @@ import {
 function BackgroundSlideshow() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const images = [
-    "/bg1.jpg",
-    "/bg2.jpg",
-    "/bg3.jpg",
-    "/bg4.jpg",
-    "/bg5.jpg",
-    "/bg6.jpg",
-    "/bg7.jpg",
+    '/bg1.jpg',
+    '/bg2.jpg',
+    '/bg3.jpg',
+    '/bg4.jpg',
+    '/bg5.jpg',
+    '/bg6.jpg',
+    '/bg7.jpg',
   ];
 
   useEffect(() => {
@@ -40,9 +40,7 @@ function BackgroundSlideshow() {
       {images.map((src, index) => (
         <div
           key={index}
-          className={`slideshow-image ${
-            index === currentIndex ? "active" : ""
-          }`}
+          className={`slideshow-image ${index === currentIndex ? 'active' : ''}`}
           style={{ backgroundImage: `url(${src})` }}
         />
       ))}
@@ -70,11 +68,7 @@ function Toast({ message, onClose }) {
   return (
     <div className="toast animate-in">
       <span>{message}</span>
-      <button
-        className="toast-close"
-        onClick={onClose}
-        aria-label="Close notification"
-      >
+      <button className="toast-close" onClick={onClose} aria-label="Close notification">
         ✕
       </button>
     </div>
@@ -84,34 +78,34 @@ function Toast({ message, onClose }) {
 export default function App() {
   // View management
   const [view, setView] = useState("home");
-
+  
   // Player state
   const [players, setPlayers] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-
+  
   // Admin form state
   const [newName, setNewName] = useState("");
   const [newPosition, setNewPosition] = useState("");
   const [newSide, setNewSide] = useState("");
-
+  
   // Game mode toggle
   const [useReactionGame, setUseReactionGame] = useState(() => {
     // Load from localStorage
     const saved = localStorage.getItem("useReactionGame");
     return saved === "true";
   });
-
+  
   // Hardware status
   const [hardwareAvailable, setHardwareAvailable] = useState(false);
-
+  
   // Notification state
   const [msg, setMsg] = useState("");
-
+  
   // Game state
   const [difficulty, setDifficulty] = useState(null);
   const [catches, setCatches] = useState(null);
   const [count, setCount] = useState(3);
-
+  
   // Reaction game state
   const [currentCircle, setCurrentCircle] = useState(null);
   const [circleStartTime, setCircleStartTime] = useState(null);
@@ -119,9 +113,15 @@ export default function App() {
   const [circlesShown, setCirclesShown] = useState(0); // Track how many circles have been shown
   const maxCircles = 10;
 
+  // Admin state
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const passwordRef = useRef(null);
+  
   // Leaderboard state
   const [board, setBoard] = useState([]);
-
+  
   // Fetching guard
   const fetchingRef = useRef(false);
   const gameContainerRef = useRef(null);
@@ -219,7 +219,7 @@ export default function App() {
     const confirmDelete = window.confirm(
       `Delete ${selectedPlayer.name}?\n\nThis will also delete all their sessions.`
     );
-
+    
     if (!confirmDelete) return;
 
     try {
@@ -245,7 +245,7 @@ export default function App() {
   // Handle CSV import
   async function handleImportCSV(file) {
     if (!file) return;
-
+    
     try {
       const result = await importCSVSimple(file);
       showMessage(
@@ -275,7 +275,7 @@ export default function App() {
         difficulty,
         catches,
       });
-
+      
       const data = await getLeaderboard(10);
       setBoard(data);
       setView("leaderboard");
@@ -288,15 +288,13 @@ export default function App() {
   function handleToggleGameMode(enabled) {
     setUseReactionGame(enabled);
     localStorage.setItem("useReactionGame", enabled.toString());
-    showMessage(
-      enabled ? "✓ Reaction game enabled" : "✓ Reaction game disabled"
-    );
+    showMessage(enabled ? "✓ Reaction game enabled" : "✓ Reaction game disabled");
   }
 
   // Countdown effect (3, 2, 1, 0 → flash)
   useEffect(() => {
     if (view !== "countdown") return;
-
+    
     setCount(3);
     const interval = setInterval(() => {
       setCount((prev) => {
@@ -314,7 +312,7 @@ export default function App() {
   // Flash effect (hold for 1s → ready OR capture depending on mode)
   useEffect(() => {
     if (view !== "flash") return;
-
+    
     const timer = setTimeout(async () => {
       if (useReactionGame) {
         // New mode: go to reaction game (software circles)
@@ -340,7 +338,7 @@ export default function App() {
   // Start spawning circles when ready view loads
   useEffect(() => {
     if (view !== "ready") return;
-
+    
     // Reset counter and start first circle
     setCirclesShown(0);
     const timer = setTimeout(() => {
@@ -414,7 +412,7 @@ export default function App() {
       // Circle timed out - remove it and spawn new one
       setCurrentCircle(null);
       setCircleStartTime(null);
-
+      
       setTimeout(() => {
         spawnCircle();
       }, 100);
@@ -438,7 +436,7 @@ export default function App() {
     <div className="page">
       {/* Background Slideshow */}
       <BackgroundSlideshow />
-
+      
       {/* Penn State Logo */}
       <div className="brand brand-static" aria-hidden="true">
         <img src="/psu-logo.png" alt="Penn State" />
@@ -465,7 +463,7 @@ export default function App() {
               >
                 Start Test
               </button>
-
+              
               <button
                 className="btn btn-nav"
                 onClick={async () => {
@@ -483,10 +481,60 @@ export default function App() {
 
               <button
                 className="btn btn-nav ghost"
-                onClick={() => setView("admin")}
+                onClick={() => setShowAdminLogin(true)}
               >
                 Admin Panel
               </button>
+
+              {/* INLINE ADMIN LOGIN FORM */}
+              {showAdminLogin && (
+                <div className="admin-login">
+                  <input
+                    type="password"
+                    placeholder="Enter admin password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    ref={passwordRef}
+                    className="input"
+                  />
+                  <button
+                    className="btn btn-nav"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch("http://127.0.0.1:8000/admin-check", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ password: adminPassword }),
+                        });
+
+                        if (!res.ok) throw new Error("Unauthorized");
+
+                        const data = await res.json();
+                        console.log(data.message);
+                        setIsAdmin(true);
+                        setView("admin");
+                        setShowAdminLogin(false);
+                        setAdminPassword("");
+                      } catch (err) {
+                        alert("Incorrect password");
+                        setAdminPassword("");         // reset input
+                        passwordRef.current?.focus(); // focus password box
+                      }
+                    }}
+                  >
+                    Login
+                  </button>
+                  <button
+                    className="btn btn-nav ghost"
+                    onClick={() => {
+                      setShowAdminLogin(false);
+                      setAdminPassword("");
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </nav>
           </div>
         </Screen>
@@ -514,13 +562,11 @@ export default function App() {
                     .map((player) => {
                       const meta = renderMeta(player);
                       const isSelected = selectedId === player.id;
-
+                      
                       return (
                         <li
                           key={player.id}
-                          className={`list-item ${
-                            isSelected ? "selected" : ""
-                          }`}
+                          className={`list-item ${isSelected ? "selected" : ""}`}
                           onClick={() => setSelectedId(player.id)}
                           role="option"
                           aria-selected={isSelected}
@@ -628,7 +674,15 @@ export default function App() {
       )}
 
       {/* GREEN FLASH SCREEN */}
-      {view === "flash" && <div className="green-screen" aria-hidden="true" />}
+      {view === "flash" && (
+        <Screen view={view}>
+          <div className="panel center">
+            <div className="green-screen">
+              <span className="go-text">GO</span>
+            </div>
+          </div>
+        </Screen>
+      )}
 
       {/* READY/GAME SCREEN - Click circles as they appear */}
       {view === "ready" && (
@@ -638,15 +692,15 @@ export default function App() {
             <div
               className="reaction-circle"
               style={{
-                position: "absolute",
+                position: 'absolute',
                 left: currentCircle.x,
                 top: currentCircle.y,
                 width: currentCircle.size,
                 height: currentCircle.size,
-                borderRadius: "50%",
-                background: "#17c964",
-                cursor: "pointer",
-                boxShadow: "0 8px 24px rgba(23, 201, 100, 0.4)",
+                borderRadius: '50%',
+                background: '#17c964',
+                cursor: 'pointer',
+                boxShadow: '0 8px 24px rgba(23, 201, 100, 0.4)',
               }}
               onClick={handleCircleClick}
             />
@@ -658,16 +712,16 @@ export default function App() {
               key={ft.id}
               className="time-popup"
               style={{
-                position: "fixed",
+                position: 'fixed',
                 left: ft.x,
                 top: ft.y,
-                fontSize: "28px",
-                fontWeight: "900",
-                color: "#17c964",
-                textShadow: "0 2px 8px rgba(0, 0, 0, 0.6)",
-                pointerEvents: "none",
+                fontSize: '28px',
+                fontWeight: '900',
+                color: '#17c964',
+                textShadow: '0 2px 8px rgba(0, 0, 0, 0.6)',
+                pointerEvents: 'none',
                 zIndex: 1000,
-                animation: "floatUp 1.2s ease-out forwards",
+                animation: 'floatUp 1.2s ease-out forwards',
               }}
             >
               {ft.time}ms
@@ -675,34 +729,26 @@ export default function App() {
           ))}
 
           {/* Progress Counter */}
-          <div
-            style={{
-              position: "fixed",
-              top: "100px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              background: "rgba(255, 255, 255, 0.08)",
-              backdropFilter: "blur(20px)",
-              border: "1px solid rgba(255, 255, 255, 0.12)",
-              borderRadius: "12px",
-              padding: "16px 28px",
-              color: "#EAF1FF",
-              fontSize: "20px",
-              fontWeight: "700",
-              zIndex: 50,
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "14px",
-                color: "#9DB8D9",
-                marginBottom: "4px",
-              }}
-            >
+          <div style={{
+            position: 'fixed',
+            top: '100px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            borderRadius: '12px',
+            padding: '16px 28px',
+            color: '#EAF1FF',
+            fontSize: '20px',
+            fontWeight: '700',
+            zIndex: 50,
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '14px', color: '#9DB8D9', marginBottom: '4px' }}>
               Circles
             </div>
-            <div style={{ fontSize: "32px", lineHeight: "1" }}>
+            <div style={{ fontSize: '32px', lineHeight: '1' }}>
               {circlesShown} / {maxCircles}
             </div>
           </div>
@@ -758,15 +804,11 @@ export default function App() {
           <div className="panel">
             <header className="panel-header">
               <h2>🏆 Leaderboard</h2>
-              <p className="muted">
-                Top 10 performances (ranked by balanced score)
-              </p>
+              <p className="muted">Top 10 performances (ranked by balanced score)</p>
             </header>
 
             {board.length === 0 ? (
-              <div className="empty">
-                No sessions recorded yet. Complete a test to appear here!
-              </div>
+              <div className="empty">No sessions recorded yet. Complete a test to appear here!</div>
             ) : (
               <section className="section">
                 <div className="table-wrapper">
@@ -783,10 +825,7 @@ export default function App() {
                     </thead>
                     <tbody>
                       {board.slice(0, 10).map((row, index) => (
-                        <tr
-                          key={index}
-                          className={index < 3 ? `rank-${index + 1}` : ""}
-                        >
+                        <tr key={index} className={index < 3 ? `rank-${index + 1}` : ""}>
                           <td className="rank-col">
                             {index === 0 && "🥇"}
                             {index === 1 && "🥈"}
@@ -795,27 +834,20 @@ export default function App() {
                           </td>
                           <td className="player-name">{row.name}</td>
                           <td>
-                            <span
-                              className={`difficulty-badge difficulty-${row.difficulty
-                                .toLowerCase()
-                                .replace(" ", "-")}`}
-                            >
+                            <span className={`difficulty-badge difficulty-${row.difficulty.toLowerCase().replace(" ", "-")}`}>
                               {row.difficulty}
                             </span>
                           </td>
                           <td className="center">{row.catches}</td>
                           <td className="center score-col">{row.score}</td>
                           <td className="date-col">
-                            {row.played_at
-                              ? new Date(row.played_at).toLocaleDateString(
-                                  "en-US",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "numeric",
-                                    minute: "2-digit",
-                                  }
-                                )
+                            {row.played_at 
+                              ? new Date(row.played_at).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                })
                               : "—"}
                           </td>
                         </tr>
@@ -857,33 +889,20 @@ export default function App() {
             </header>
 
             {/* Game Mode Toggle */}
-            <section
-              className="section"
-              style={{
-                background: "rgba(23, 201, 100, 0.08)",
-                border: "1px solid rgba(23, 201, 100, 0.2)",
-                borderRadius: "12px",
-                padding: "20px",
-                marginBottom: "24px",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "12px",
-                }}
-              >
+            <section className="section" style={{ 
+              background: 'rgba(23, 201, 100, 0.15)', 
+              border: '1px solid rgba(23, 201, 100, 0.2)',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '24px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <div>
-                  <h3
-                    className="section-title"
-                    style={{ margin: 0, marginBottom: "4px" }}
-                  >
+                  <h3 className="section-title" style={{ margin: 0, marginBottom: '4px' }}>
                     🎮 Reaction Game Mode
                   </h3>
-                  <p className="muted" style={{ margin: 0, fontSize: "14px" }}>
-                    {useReactionGame
+                  <p className="muted" style={{ margin: 0, fontSize: '14px' }}>
+                    {useReactionGame 
                       ? "Players will click circles that appear on screen after countdown"
                       : "Players will directly enter their score after countdown (with hardware control)"}
                   </p>
@@ -897,45 +916,32 @@ export default function App() {
                   <span className="toggle-slider"></span>
                 </label>
               </div>
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: useReactionGame ? "#17c964" : "#ff9500",
-                  fontWeight: "600",
-                  marginTop: "8px",
-                }}
-              >
-                {useReactionGame
-                  ? "✓ Reaction Game ON"
-                  : "○ Reaction Game OFF (Hardware Mode)"}
+              <div style={{ 
+                fontSize: '13px', 
+                color: useReactionGame ? '#17c964' : '#ff9500',
+                fontWeight: '600',
+                marginTop: '8px'
+              }}>
+                {useReactionGame ? "✓ Reaction Game ON" : "○ Reaction Game OFF (Hardware Mode)"}
               </div>
             </section>
 
             {/* Hardware Control Section */}
             {hardwareAvailable && (
-              <section
-                className="section"
-                style={{
-                  background: "rgba(255, 149, 0, 0.08)",
-                  border: "1px solid rgba(255, 149, 0, 0.2)",
-                  borderRadius: "12px",
-                  padding: "20px",
-                  marginBottom: "24px",
-                }}
-              >
-                <h3
-                  className="section-title"
-                  style={{ margin: 0, marginBottom: "12px" }}
-                >
+              <section className="section" style={{ 
+                background: 'rgba(255, 149, 0, 0.08)', 
+                border: '1px solid rgba(255, 149, 0, 0.2)',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '24px'
+              }}>
+                <h3 className="section-title" style={{ margin: 0, marginBottom: '12px' }}>
                   🔧 Hardware Controls
                 </h3>
-                <p
-                  className="muted"
-                  style={{ margin: 0, fontSize: "14px", marginBottom: "16px" }}
-                >
+                <p className="muted" style={{ margin: 0, fontSize: '14px', marginBottom: '16px' }}>
                   Control the electromagnets directly for testing
                 </p>
-                <div className="row" style={{ gap: "12px" }}>
+                <div className="row" style={{ gap: '12px' }}>
                   <button
                     className="btn small"
                     onClick={async () => {
@@ -946,11 +952,7 @@ export default function App() {
                         showMessage("Error: " + error.message);
                       }
                     }}
-                    style={{
-                      background: "#17c964",
-                      borderColor: "#17c964",
-                      color: "#fff",
-                    }}
+                    style={{ background: '#17c964', borderColor: '#17c964', color: '#fff' }}
                   >
                     ⚡ All Magnets ON
                   </button>
@@ -995,13 +997,6 @@ export default function App() {
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleCreatePlayer()}
                 />
-                <input
-                  className="input"
-                  placeholder="Position *"
-                  value={newPosition}
-                  onChange={(e) => setNewPosition(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleCreatePlayer()}
-                />
                 <select
                   className="input"
                   value={newSide}
@@ -1012,12 +1007,26 @@ export default function App() {
                   <option value="Defense">Defense</option>
                   <option value="Special Teams">Special Teams</option>
                 </select>
+                <select
+                  className="input"
+                  value={newPosition}
+                  onChange={(e) => setNewPosition(e.target.value)}
+                >
+                  <option value="">Select Position *</option>
+                  <option value="Line">Line</option>
+                  <option value="Center">Center</option>
+                  <option value="Guard">Guard</option>
+                  <option value="Tackle">Tackle</option>
+                  <option value="Quarterback">Quarterback</option>
+                  <option value="Back">Back</option>
+                  <option value="Quarterback">Quarterback</option>
+                  <option value="Wide Receiver">Wide Receiver</option>
+                  <option value="End">End</option>
+                </select>
                 <button
                   className="btn small"
                   onClick={handleCreatePlayer}
-                  disabled={
-                    !newName.trim() || !newPosition.trim() || !newSide.trim()
-                  }
+                  disabled={!newName.trim() || !newPosition.trim() || !newSide.trim()}
                 >
                   Add Player
                 </button>
@@ -1030,9 +1039,7 @@ export default function App() {
                 👥 All Players ({players.length})
               </h3>
               {players.length === 0 ? (
-                <div className="empty">
-                  No players yet. Add one above to get started.
-                </div>
+                <div className="empty">No players yet. Add one above to get started.</div>
               ) : (
                 <>
                   <ul className="list admin-list" role="listbox">
@@ -1042,13 +1049,11 @@ export default function App() {
                       .map((player) => {
                         const meta = renderMeta(player);
                         const isSelected = selectedId === player.id;
-
+                        
                         return (
                           <li
                             key={player.id}
-                            className={`list-item ${
-                              isSelected ? "selected" : ""
-                            }`}
+                            className={`list-item ${isSelected ? "selected" : ""}`}
                             onClick={() => setSelectedId(player.id)}
                             role="option"
                             aria-selected={isSelected}
