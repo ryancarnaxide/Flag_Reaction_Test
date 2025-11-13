@@ -999,6 +999,16 @@ export default function App() {
                 />
                 <select
                   className="input"
+                  value={newSide}
+                  onChange={(e) => setNewSide(e.target.value)}
+                >
+                  <option value="">Select Side *</option>
+                  <option value="Offense">Offense</option>
+                  <option value="Defense">Defense</option>
+                  <option value="Special Teams">Special Teams</option>
+                </select>
+                <select
+                  className="input"
                   value={newPosition}
                   onChange={(e) => setNewPosition(e.target.value)}
                 >
@@ -1012,16 +1022,6 @@ export default function App() {
                   <option value="Quarterback">Quarterback</option>
                   <option value="Wide Receiver">Wide Receiver</option>
                   <option value="End">End</option>
-                </select>
-                <select
-                  className="input"
-                  value={newSide}
-                  onChange={(e) => setNewSide(e.target.value)}
-                >
-                  <option value="">Select Side *</option>
-                  <option value="Offense">Offense</option>
-                  <option value="Defense">Defense</option>
-                  <option value="Special Teams">Special Teams</option>
                 </select>
                 <button
                   className="btn small"
