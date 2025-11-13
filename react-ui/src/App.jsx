@@ -112,6 +112,12 @@ export default function App() {
   const [floatingTimes, setFloatingTimes] = useState([]);
   const [circlesShown, setCirclesShown] = useState(0); // Track how many circles have been shown
   const maxCircles = 10;
+
+  // Admin state
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const passwordRef = useRef(null);
   
   // Leaderboard state
   const [board, setBoard] = useState([]);
@@ -472,13 +478,63 @@ export default function App() {
               >
                 View Leaderboard
               </button>
-              
+
               <button
                 className="btn btn-nav ghost"
-                onClick={() => setView("admin")}
+                onClick={() => setShowAdminLogin(true)}
               >
                 Admin Panel
               </button>
+
+              {/* INLINE ADMIN LOGIN FORM */}
+              {showAdminLogin && (
+                <div className="admin-login">
+                  <input
+                    type="password"
+                    placeholder="Enter admin password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    ref={passwordRef}
+                    className="input"
+                  />
+                  <button
+                    className="btn btn-nav"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch("http://127.0.0.1:8000/admin-check", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ password: adminPassword }),
+                        });
+
+                        if (!res.ok) throw new Error("Unauthorized");
+
+                        const data = await res.json();
+                        console.log(data.message);
+                        setIsAdmin(true);
+                        setView("admin");
+                        setShowAdminLogin(false);
+                        setAdminPassword("");
+                      } catch (err) {
+                        alert("Incorrect password");
+                        setAdminPassword("");         // reset input
+                        passwordRef.current?.focus(); // focus password box
+                      }
+                    }}
+                  >
+                    Login
+                  </button>
+                  <button
+                    className="btn btn-nav ghost"
+                    onClick={() => {
+                      setShowAdminLogin(false);
+                      setAdminPassword("");
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </nav>
           </div>
         </Screen>

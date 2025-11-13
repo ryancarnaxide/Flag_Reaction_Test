@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 import database_setup as db
 from database_setup import get_connection
@@ -231,6 +232,21 @@ except Exception as e:
     GPIO_AVAILABLE = False
     magnets = []
     print(f"[HARDWARE] GPIO not available: {e}")
+
+#----------------------------------------------------
+#   Admin Password
+#----------------------------------------------------
+
+ADMIN_PASSWORD = "dan5171"
+
+class PasswordRequest(BaseModel):
+    password: str
+
+@app.post("/admin-check")
+def admin_check(req: PasswordRequest):
+    if req.password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return {"message": "Admin access granted!"}
 
 
 # ==============================
