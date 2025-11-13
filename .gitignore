@@ -12,4 +12,4 @@ __pycache__/
 *.csv
 
 # Ignore any virtual environment files
-venv/
+.venv/
