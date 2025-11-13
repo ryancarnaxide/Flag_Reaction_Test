@@ -1,4 +1,4 @@
 
 sudo docker compose up -d
 
-chromium --kiosk http://localhost:5173
+chromium --start-maximize http://localhost:5173
