@@ -392,7 +392,7 @@
    ======================================== */
 .panel {
   width: min(94vw, 800px);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
