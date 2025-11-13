@@ -766,7 +766,7 @@ export default function App() {
 
             <section className="section">
               <div className="nums-vertical">
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
+                {Array.from({ length: 11 }, (_, i) => i).map((num) => (
                   <button
                     key={num}
                     type="button"
