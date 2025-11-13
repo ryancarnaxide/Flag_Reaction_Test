@@ -675,7 +675,13 @@ export default function App() {
 
       {/* GREEN FLASH SCREEN */}
       {view === "flash" && (
-        <div className="green-screen" aria-hidden="true" />
+        <Screen view={view}>
+          <div className="panel center">
+            <div className="green-screen">
+              <span className="go-text">GO</span>
+            </div>
+          </div>
+        </Screen>
       )}
 
       {/* READY/GAME SCREEN - Click circles as they appear */}
