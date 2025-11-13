@@ -10,3 +10,5 @@ __pycache__/
 
 #Ignore CSV files
 *.csv
+
+*.DS_Store
