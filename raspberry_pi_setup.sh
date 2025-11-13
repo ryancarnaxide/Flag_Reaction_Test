@@ -29,11 +29,6 @@ sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin d
 # install git (if you haven’t already)
 sudo apt install -y git
 
-# clone the repository
-git clone --branch feature/react-ui-docker --single-branch https://github.com/ryancarnaxide/Flag_Reaction_Test
-
-cd Flag_Reaction_Test
-
 # build the image
 sudo apt install -y docker-compose-plugin
 sudo docker compose up -d
