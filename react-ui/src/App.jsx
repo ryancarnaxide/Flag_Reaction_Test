@@ -890,7 +890,7 @@ export default function App() {
 
             {/* Game Mode Toggle */}
             <section className="section" style={{ 
-              background: 'rgba(23, 201, 100, 0.08)', 
+              background: 'rgba(23, 201, 100, 0.15)', 
               border: '1px solid rgba(23, 201, 100, 0.2)',
               borderRadius: '12px',
               padding: '20px',
@@ -997,13 +997,22 @@ export default function App() {
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleCreatePlayer()}
                 />
-                <input
+                <select
                   className="input"
-                  placeholder="Position *"
                   value={newPosition}
                   onChange={(e) => setNewPosition(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleCreatePlayer()}
-                />
+                >
+                  <option value="">Select Position *</option>
+                  <option value="Line">Line</option>
+                  <option value="Center">Center</option>
+                  <option value="Guard">Guard</option>
+                  <option value="Tackle">Tackle</option>
+                  <option value="Quarterback">Quarterback</option>
+                  <option value="Back">Back</option>
+                  <option value="Quarterback">Quarterback</option>
+                  <option value="Wide Receiver">Wide Receiver</option>
+                  <option value="End">End</option>
+                </select>
                 <select
                   className="input"
                   value={newSide}
