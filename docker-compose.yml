@@ -7,10 +7,21 @@ services:
       context: ./backend
       dockerfile: Dockerfile.backend
     container_name: uvicorn-backend
+    privileged: true
+    devices:
+      - "/dev/gpiochip0:/dev/gpiochip0"
+      - "/dev/gpiochip4:/dev/gpiochip4"
+      - "/dev/gpiochip10:/dev/gpiochip10"
+      - "/dev/gpiochip11:/dev/gpiochip11"
+      - "/dev/gpiochip12:/dev/gpiochip12"
+      - "/dev/gpiochip13:/dev/gpiochip13"
+      - "/dev/gpiomem0:/dev/gpiomem0"
+      - "/dev/gpiomem1:/dev/gpiomem1"
+      - "/dev/gpiomem2:/dev/gpiomem2"
+      - "/dev/gpiomem3:/dev/gpiomem3"
+      - "/dev/gpiomem4:/dev/gpiomem4"
     ports:
       - "8000:8000"
-    environment:
-      - PYTHONUNBUFFERED=1
     volumes:
       - ./backend:/app
     restart: unless-stopped

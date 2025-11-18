@@ -23,7 +23,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Flag Reaction Test API", lifespan=lifespan)
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+'''
 # Allow frontend access (Vite)
 app.add_middleware(
     CORSMiddleware,
@@ -32,7 +42,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+'''
 
 @app.get("/")
 def root():
@@ -272,7 +282,42 @@ def magnets_all_off():
         m.off()
     print("[HARDWARE] All magnets OFF")
 
+def drop_sequence(difficulty="Medium"):
+    """
+    Drop magnets in random order based on difficulty.
+    Runs in a background thread.
+    """
+    drop_delays = {
+        "Easy": 3.0,
+        "Medium": 2.0,
+        "Hard": 1.0,
+        "Very Hard": 0.5
+    }
+    delay = drop_delays.get(difficulty, 2.0)
 
+    def sequence():
+        if not GPIO_AVAILABLE:
+            print(f"[HARDWARE] Simulated random drop: {difficulty}, {delay}s between drops")
+            return
+        
+
+        # Create a shuffled list of indexes
+        order = list(range(len(magnets)))
+        shuffle(order)
+
+        print(f"[HARDWARE] Drop order: {order}")
+
+        # Drop magnets in random order
+        for idx in order:
+            time.sleep(delay)
+            magnets[idx].off()
+            print(f"[HARDWARE] Magnet {idx + 1}/10 dropped")
+
+        print(f"[HARDWARE] All magnets dropped (random, {difficulty})")
+
+    threading.Thread(target=sequence, daemon=True).start()
+
+'''
 def drop_sequence(difficulty="Medium"):
     """
     Drop magnets in sequence based on difficulty.
@@ -305,7 +350,7 @@ def drop_sequence(difficulty="Medium"):
 
     # Run in background thread
     threading.Thread(target=sequence, daemon=True).start()
-
+'''
 
 # ==============================
 # API Endpoints
