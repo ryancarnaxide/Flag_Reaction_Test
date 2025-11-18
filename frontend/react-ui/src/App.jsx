@@ -449,6 +449,23 @@ export default function App() {
       {view === "home" && (
         <Screen view={view}>
           <div className="home">
+            {/* 🔴 TOP-RIGHT POWER BUTTON */}
+            <div className="top-right">
+              <button
+                className="btn btn-nav ghost"
+                onClick={async () => {
+                  try {
+                    await turnMagnetsOff();
+                    showMessage("✓ All magnets OFF");
+                  } catch (error) {
+                    showMessage("Error: " + error.message);
+                  }
+                }}
+              >
+                🔴 All Magnets OFF
+              </button>
+            </div>
+
             <p className="home-header">Penn State Athletics</p>
             <h1 className="title">Flag Reaction Test</h1>
             <p className="subtitle">Select an option to begin</p>
@@ -480,7 +497,7 @@ export default function App() {
               </button>
 
               <button
-                className="btn btn-nav ghost"
+                className="btn btn-nav"
                 onClick={() => setShowAdminLogin(true)}
               >
                 Admin Panel
@@ -599,7 +616,15 @@ export default function App() {
               <button
                 className="btn small"
                 disabled={!selectedId}
-                onClick={() => setView("difficulty")}
+                onClick={async () => {
+                  try {
+                    await turnMagnetsOn();
+                    showMessage("✓ All magnets ON");
+                  } catch (error) {
+                    showMessage("Error: " + error.message);
+                  }
+                  setView("difficulty");
+                }}
               >
                 Continue →
               </button>
