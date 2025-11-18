@@ -16,6 +16,7 @@ from matplotlib.figure import Figure
 
 from gpiozero import LED
 import time
+import random
 
 # ==============================
 # Initialize Database
@@ -639,6 +640,27 @@ class FlagApp(QWidget):
             mag2.on()
             time.sleep(2)
             '''
+            magnets = [mag1, mag2, mag3, mag4, mag5, mag6, mag7, mag8, mag9, mag10]
+
+            if self.selected_difficulty == "Easy":
+                delay = 3
+            elif self.selected_difficulty == "Medium":
+                delay = 2
+            elif self.selected_difficulty == "Hard":
+                delay = 1
+            elif self.selected_difficulty == "Very Hard":
+                delay = 0.5
+            else:
+                delay = 1  # fallback safety
+
+            # Randomize order
+            random.shuffle(magnets)
+
+            # Turn off magnets in randomized order with difficulty-based delay
+            for mag in magnets:
+                mag.off()
+                time.sleep(delay)
+            '''
             if(self.selected_difficulty == "Easy"):
                 mag1.off()
                 time.sleep(3)
@@ -719,7 +741,7 @@ class FlagApp(QWidget):
                 mag9.off()
                 time.sleep(0.5)
                 mag10.off()
-
+                '''
     def event(self, e):
         if e.type() in (QEvent.Type.TouchBegin, QEvent.Type.TouchUpdate, QEvent.Type.TouchEnd):
             self.handle_touch(e)
