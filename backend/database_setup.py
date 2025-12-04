@@ -137,6 +137,63 @@ def get_player_sessions(player_id):
     return rows
 
 
+
+def export_to_csv():
+    today_str = datetime.now().strftime("%m-%d-%Y")
+
+    # Local CSV directory inside the project
+    project_root = Path.cwd()
+    local_dir = project_root / "CSV"
+    local_dir.mkdir(exist_ok=True)
+
+    # OneDrive directory INSIDE the container (mapped from host)
+    onedrive_dir = Path("/onedrive")
+    if not onedrive_dir.exists() or not onedrive_dir.is_dir():
+        print("[CSV] /onedrive not available, OneDrive export will be skipped")
+        onedrive_dir = None
+
+    def unique_name(folder: Path) -> Path:
+        count = 1
+        while True:
+            candidate = folder / f"{today_str}-{count}.csv"
+            if not candidate.exists():
+                return candidate
+            count += 1
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT p.name, s.difficulty, p.position, p.side, s.catches, s.score, s.played_at
+        FROM sessions s
+        JOIN players p ON p.player_id = s.player_id
+        ORDER BY s.played_at ASC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+
+    # 1) Local CSV
+    local_file = unique_name(local_dir)
+    with open(local_file, mode="w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Player", "Difficulty", "Position", "Side", "Flags", "Score", "Date"])
+        writer.writerows(rows)
+
+    # 2) OneDrive CSV, if available
+    onedrive_file = None
+    if onedrive_dir is not None:
+        onedrive_file = unique_name(onedrive_dir)
+        try:
+            with open(onedrive_file, mode="w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(["Player", "Difficulty", "Position", "Side", "Flags", "Score", "Date"])
+                writer.writerows(rows)
+        except Exception as e:
+            print(f"[CSV] Failed to write OneDrive CSV: {e}")
+            onedrive_file = None
+
+    return local_file, onedrive_file
+
+'''
 def export_to_csv():
     """
     Export all session data to a CSV file in two locations:
@@ -209,7 +266,7 @@ def export_to_csv():
     except Exception:
         pass  #
     return local_file, onedrive_file
-
+'''
 
 # ---------------------------
 # CSV Import

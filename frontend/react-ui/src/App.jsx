@@ -234,6 +234,29 @@ export default function App() {
 
   // Handle CSV export
   async function handleExportCSV() {
+  try {
+    const result = await exportCSVSimple();
+    const { local_path, onedrive_path } = result;
+
+    let msg = "✓ Export complete.";
+
+    if (local_path) {
+      msg += `\nLocal: ${local_path}`;
+    }
+    if (onedrive_path) {
+      msg += `\nOneDrive: ${onedrive_path}`;
+    }
+    if (!local_path && !onedrive_path) {
+      msg += "\n(No files were created.)";
+    }
+
+    showMessage(msg);
+  } catch (error) {
+    showMessage(`Export failed: ${error.message}`);
+  }
+}
+  /*
+  async function handleExportCSV() {
     try {
       await exportCSVSimple();
       showMessage("✓ Exported: players_scores.csv");
@@ -241,7 +264,7 @@ export default function App() {
       showMessage(`Export failed: ${error.message}`);
     }
   }
-
+  */
   // Handle CSV import
   async function handleImportCSV(file) {
     if (!file) return;

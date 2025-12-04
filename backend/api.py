@@ -156,6 +156,24 @@ def get_leaderboard(top_n: int = 10):
 @app.get("/export-simple")
 def export_simple_csv():
     """
+    Call database_setup.export_to_csv() to write CSV files to:
+      - ./CSV directory inside the backend container
+      - OneDrive folder if available
+
+    Returns JSON with the paths so the frontend can display them.
+    """
+    try:
+        local_path, onedrive_path = db.export_to_csv()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {e}")
+
+    return {
+        "local_path": str(local_path) if local_path is not None else None,
+        "onedrive_path": str(onedrive_path) if onedrive_path is not None else None,
+    }
+'''
+def export_simple_csv():
+    """
     Export all players with total score, position, and side.
     """
     conn = get_connection()
@@ -187,7 +205,7 @@ def export_simple_csv():
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=players_scores.csv"}
     )
-
+'''
 
 @app.post("/import-simple")
 async def import_simple(file: UploadFile = File(...)):

@@ -24,6 +24,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - /home/psufrt/OneDrive:/onedrive
     restart: unless-stopped
     networks:
       - app-network

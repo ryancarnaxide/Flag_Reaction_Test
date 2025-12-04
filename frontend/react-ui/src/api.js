@@ -41,6 +41,12 @@ export async function addSession({ player_id, difficulty, catches }) {
 export async function exportCSVSimple() {
   const r = await fetch(`${BASE}/export-simple`);
   if (!r.ok) throw new Error(await r.text());
+  return r.json();   // { local_path, onedrive_path }
+}
+/*
+export async function exportCSVSimple() {
+  const r = await fetch(`${BASE}/export-simple`);
+  if (!r.ok) throw new Error(await r.text());
   const blob = await r.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -51,7 +57,7 @@ export async function exportCSVSimple() {
   a.remove();
   URL.revokeObjectURL(url);
 }
-
+*/
 export async function importCSVSimple(file) {
   const fd = new FormData();
   fd.append("file", file);
